@@ -36,8 +36,8 @@ namespace tr {
 	
 	void initFont();
 	void drawString(SSTV::rgb colour, int fontSize, const char* fmt...);
-	void setTextOrigin(vec2 origin);
-	void bindToCanvas(SSTV::rgb* canvas, vec2 canvasSize);
+	void setTextOrigin(SSTV::vec2 origin);
+	void bindToCanvas(SSTV::rgb* canvas, SSTV::vec2 canvasSize);
 	extern SSTV::rgb* rgbFont;
 
 }

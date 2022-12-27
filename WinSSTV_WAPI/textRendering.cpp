@@ -26,13 +26,13 @@ namespace tr {
 
 	//run init before dereferencing this
 	SSTV::rgb* rgbFont = 0;
-	vec2 fontImageSize = { 144, 101 };
+	SSTV::vec2 fontImageSize = { 144, 101 };
 	
 	SSTV::rgb* boundCanvas = 0;
-	vec2 boundCanvasSize = { 0, 0 };
+	SSTV::vec2 boundCanvasSize = { 0, 0 };
 	
 	int iFontSize = 1;	
-	vec2 iOrigin = { 0, 0 };
+	SSTV::vec2 iOrigin = { 0, 0 };
 
 	SSTV::rgb white  = { 255, 255, 255 };
 	SSTV::rgb black  = { 0,   0,   0   };
@@ -44,14 +44,14 @@ namespace tr {
 	SSTV::rgb violet = { 255, 0,   255 };
 	
 	//this is clearly too many loops within loops but it works and im not sure how to improve it
-	int drawCharacter(SSTV::rgb colour, char c, vec2 pos, int fontSize) {		
+	int drawCharacter(SSTV::rgb colour, char c, SSTV::vec2 pos, int fontSize) {
 		int cmIndex = 0;
 		for (char cm : fontMap) {
 			if (cm == c) {
 				
 				//i cant remember what these do
-				vec2 map = { cmIndex % CHARY, cmIndex / CHARY };
-				vec2 mapPosExpanded = { (map.X * CHARX) + ((map.X * CHARX) / CHARX), (map.Y * CHARY) + ((map.Y * CHARY) / CHARY) };
+				SSTV::vec2 map = { cmIndex % CHARY, cmIndex / CHARY };
+				SSTV::vec2 mapPosExpanded = { (map.X * CHARX) + ((map.X * CHARX) / CHARX), (map.Y * CHARY) + ((map.Y * CHARY) / CHARY) };
 				
 				//pixel
 				for (int y = 0; y < CHARY; y++) {
@@ -80,7 +80,7 @@ namespace tr {
 		return CHARX * fontSize;
 	}
 
-	int drawSpacer(int width, vec2 pos, int fontSize) {
+	int drawSpacer(int width, SSTV::vec2 pos, int fontSize) {
 		for (int y = 0; y < CHARY * fontSize; y++) {
 			for (int x = 0; x < width * fontSize; x++) {
 				boundCanvas[((pos.Y + y) * boundCanvasSize.X) + (pos.X + x)] = { 0, 0, 0 };
@@ -89,11 +89,11 @@ namespace tr {
 		return width * fontSize;
 	}
 
-	void setTextOrigin(vec2 origin) {
+	void setTextOrigin(SSTV::vec2 origin) {
 		iOrigin = origin;
 	}
 
-	void bindToCanvas(SSTV::rgb* canvas, vec2 canvasSize) {
+	void bindToCanvas(SSTV::rgb* canvas, SSTV::vec2 canvasSize) {
 		boundCanvas = canvas;
 		boundCanvasSize = canvasSize;
 	}

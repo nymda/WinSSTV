@@ -37,7 +37,7 @@ INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 
 //RGB buffer
 SSTV::rgb* imgData = 0;
-vec2 imgSize = { 0, 0 };
+SSTV::vec2 imgSize = { 0, 0 };
 HBITMAP hBitmap = 0;
 HBITMAP hOldBitmap = 0;
 HDC hdc = 0;
@@ -48,8 +48,22 @@ PAINTSTRUCT ps = {};
 RECT rect = { 0, 0 };
 RECT rc = { 0, 0 };
 
-vec2 dispImgPos = { 5, 6 };
-vec2 dispImgSize = { 320, 240 };
+SSTV::vec2 dispImgPos = { 5, 6 };
+SSTV::vec2 dispImgSize = { 320, 240 };
+
+HBITMAP bmp240 = 0;
+unsigned char* DIB240 = 0;
+SSTV::simpleBitmap displayImage240 = {
+    {320, 240},
+    0
+};
+
+HBITMAP bmp256 = 0;
+unsigned char* DIB256 = 0;
+SSTV::simpleBitmap displayImage256 = {
+    {320, 256},
+    0
+};
 
 void createConsole() {
 	AllocConsole();
@@ -59,7 +73,126 @@ void createConsole() {
 	freopen_s(&f, "CONIN$", "r", stdin);
 }
 
-HBITMAP hbitmapFromRGBArray(SSTV::rgb* data, vec2 size) {
+void initGlbBitmaps() {
+
+    HDC hdc;
+    
+	//sets up and allocates a DIB for the 320x240 image
+    
+    BITMAPINFOHEADER bmih240;
+    bmih240.biSize = sizeof(BITMAPINFOHEADER);
+    bmih240.biWidth = 320;
+    bmih240.biHeight = -240;
+    bmih240.biPlanes = 1;
+    bmih240.biBitCount = 24;
+    bmih240.biCompression = BI_RGB;
+    bmih240.biSizeImage = 0;
+    bmih240.biXPelsPerMeter = 10;
+    bmih240.biYPelsPerMeter = 10;
+    bmih240.biClrUsed = 0;
+    bmih240.biClrImportant = 0;
+
+    BITMAPINFO dbmi240;
+    ZeroMemory(&dbmi240, sizeof(dbmi240));
+    dbmi240.bmiHeader = bmih240;
+    dbmi240.bmiColors->rgbBlue = 0;
+    dbmi240.bmiColors->rgbGreen = 0;
+    dbmi240.bmiColors->rgbRed = 0;
+    dbmi240.bmiColors->rgbReserved = 0;
+
+    hdc = GetDC(hWnd);
+    bmp240 = CreateDIBSection(hdc, &dbmi240, DIB_RGB_COLORS, (void**)&DIB240, NULL, 0);
+    if (!bmp240 || bmp240 == INVALID_HANDLE_VALUE) {
+        printf_s("Error: CreateDIBSection for 240 failed with error %d\r", GetLastError());
+    }
+    
+    //sets up and allocates a DIB for the 320x256 image
+
+    BITMAPINFOHEADER bmih256;
+    bmih256.biSize = sizeof(BITMAPINFOHEADER);
+    bmih256.biWidth = 320;
+    bmih256.biHeight = -256;
+    bmih256.biPlanes = 1;
+    bmih256.biBitCount = 24;
+    bmih256.biCompression = BI_RGB;
+    bmih256.biSizeImage = 0;
+    bmih256.biXPelsPerMeter = 10;
+    bmih256.biYPelsPerMeter = 10;
+    bmih256.biClrUsed = 0;
+    bmih256.biClrImportant = 0;
+
+    BITMAPINFO dbmi256;
+    ZeroMemory(&dbmi256, sizeof(dbmi256));
+    dbmi256.bmiHeader = bmih256;
+    dbmi256.bmiColors->rgbBlue = 0;
+    dbmi256.bmiColors->rgbGreen = 0;
+    dbmi256.bmiColors->rgbRed = 0;
+    dbmi256.bmiColors->rgbReserved = 0;
+
+    hdc = GetDC(hWnd);
+    bmp240 = CreateDIBSection(hdc, &dbmi256, DIB_RGB_COLORS, (void**)&DIB256, NULL, 0);
+    if (!bmp240 || bmp240 == INVALID_HANDLE_VALUE) {
+        printf_s("Error: CreateDIBSection for 256 failed with error %d\r", GetLastError());
+    }
+}
+
+void pushImageTo240Disp(SSTV::simpleBitmap* image) {
+	if (image->size.X != 320 || image->size.Y != 240) {
+		printf_s("Error: image size is not 320x240\r");
+		return;
+	}
+
+    unsigned char* tmp = DIB240;
+    
+    int BytesPerLine = image->size.X * 3;
+    if (BytesPerLine % 4 != 0) { BytesPerLine += 4 - BytesPerLine % 4; }
+    for (int y = 0; y < image->size.Y; y++) {
+        PBYTE line = tmp;
+        for (int x = 0; x < image->size.X; x++) {
+			line[0] = image->data[(y * 320 + x)].b;
+			line[1] = image->data[(y * 320 + x)].g;
+			line[2] = image->data[(y * 320 + x)].r;
+            line += 3;
+        }
+        tmp += BytesPerLine;
+    }
+
+    GetObject(bmp240, sizeof(BITMAP), &bm);
+    hdc = GetDC(hWnd);
+    hdcMem = CreateCompatibleDC(hdc);
+    hOldBitmap = (HBITMAP)SelectObject(hdcMem, bmp240);
+    ReleaseDC(hWnd, hdc);
+}
+
+void pushImageTo256Disp(SSTV::simpleBitmap* image){
+	if (image->size.X != 320 || image->size.Y != 256) {
+		printf_s("Error: image size is not 320x256\r");
+		return;
+	}
+    
+    PBYTE imageWrite = DIB256;
+
+    int BytesPerLine = image->size.X * 3;
+    if (BytesPerLine % 4 != 0) { BytesPerLine += 4 - BytesPerLine % 4; }
+    for (int y = 0; y < image->size.Y; y++) {
+        PBYTE line = imageWrite;
+        for (int x = 0; x < image->size.X; x++) {
+            line[0] = image->data[y * image->size.X + x].b;
+            line[1] = image->data[y * image->size.X + x].g;
+            line[2] = image->data[y * image->size.X + x].r;
+            line += 3;
+        }
+        imageWrite += BytesPerLine;
+    }
+
+    GetObject(bmp256, sizeof(BITMAP), &bm);
+    hdc = GetDC(hWnd);
+    hdcMem = CreateCompatibleDC(hdc);
+    hOldBitmap = (HBITMAP)SelectObject(hdcMem, bmp256);
+    ReleaseDC(hWnd, hdc);
+}
+
+HBITMAP hbitmapFromRGBArray(SSTV::rgb* data, SSTV::vec2 size) {
     BITMAPINFOHEADER bmih;
     bmih.biSize = sizeof(BITMAPINFOHEADER);
     bmih.biWidth = size.X;
@@ -140,23 +273,6 @@ HBITMAP loadImageFile(HWND callerHwnd) {
         int imgChannels = 0;
         wcstombs_s(0, convertedStrBuffer, ofn.lpstrFile, 128);
         imgData = (SSTV::rgb*)stbi_load(convertedStrBuffer, &imgSize.X, &imgSize.Y, &imgChannels, 3);
-		printf_s("Image loaded: X: %i, Y: %i, Channels: %i\n", imgSize.X, imgSize.Y, imgChannels);
-        if (imgData) {
-            printf_s("Processing\n");
-            if (hBitmap) {
-                DeleteObject(hBitmap);
-            }
-            
-            hBitmap = hbitmapFromRGBArray(imgData, imgSize);
-            printf_s("HBitmap: %p\n", hBitmap);
-            GetObject(hBitmap, sizeof(BITMAP), &bm);
-            hdc = GetDC(hWnd);
-            hdcMem = CreateCompatibleDC(hdc);
-            hOldBitmap = (HBITMAP)SelectObject(hdcMem, hBitmap);
-        }
-        else {
-            printf_s("Image load failed\n");
-        }
         return 0;
     }
 }
@@ -236,6 +352,11 @@ void initUI(HWND parent) {
     Button = CreateWindowW(L"Button", L"Open", WS_VISIBLE | WS_CHILD | WS_BORDER, 5 + 5 + dispImgSize.X, 5, 80, 25, parent, (HMENU)1, NULL, NULL);
 }
 
+SSTV::simpleBitmap test = {
+    {320, 240},
+    0
+};
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	INITCOMMONCONTROLSEX icex;
@@ -248,7 +369,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_COMMAND:
             {
                 if (LOWORD(wParam) == 1) {
-                    loadImageFile(hWnd);
+                    //loadImageFile(hWnd);
+
+                    //initGlbBitmaps();
+
+                    for (int x = 0; x < (320 * 240); x++) {
+                        test.data[x] = { (unsigned char)(rand() % 0xFF), (unsigned char)(rand() % 0xFF), (unsigned char)(rand() % 0xFF) };
+                    }
+
+                    printf_s("paint: %x\n", test.data[0].r);
+                    pushImageTo240Disp(&test);
+                    
 					RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
                 }
                 break;
@@ -257,6 +388,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case WM_CREATE: 
             {
                 createConsole();
+                initGlbBitmaps();
+
+				test.data = (SSTV::rgb*)malloc((320 * 240) * 3);
+                
                 initUI(hWnd);
                 
                 HFONT defFont;
@@ -266,7 +401,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
 
             case WM_PAINT:
-            {
+            {        
                 hdc = BeginPaint(hWnd, &ps);
                 
                 //overlay image with stretching to fit the window 
@@ -276,14 +411,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 COLORREF color = RGB(255, 0, 0);
                 HPEN pen = CreatePen(0, 1, color);
                 SelectObject(hdc, pen);
-                Rectangle(hdc, dispImgPos.X - 1, dispImgPos.Y - 1, dispImgSize.X + dispImgPos.X + 1, dispImgSize.Y + dispImgPos.Y + 1);
                 
+                Rectangle(hdc, dispImgPos.X - 1, dispImgPos.Y - 1, dispImgSize.X + dispImgPos.X + 1, dispImgSize.Y + dispImgPos.Y + 1);       
                 StretchBlt(hdc, dispImgPos.X, dispImgPos.Y, dispImgSize.X, dispImgSize.Y, hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
-
-
-  
-
-				//BitBlt(hdc, 0, 0, bm.bmWidth, bm.bmHeight, hdcMem, 0, 0, SRCCOPY);
                 
                 EndPaint(hWnd, &ps);
                 

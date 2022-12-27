@@ -50,7 +50,7 @@ struct encMode {
 	encModeID ID;
 	char code[8];
 	char desc[128];
-	vec2 size;
+	SSTV::vec2 size;
 	encCall ec;
 };
 

@@ -336,8 +336,8 @@ namespace wav {
 					generateProgressBar(percentage, progressBarTxt, 50);
                     
                     //X: Minutes, Y: Seconds
-					vec2 progressTime = { playbackMS / 60000, ((playbackMS % 60000) / 1000) };
-					vec2 totalTime = { (int)actualDurationMS / 60000, ((int)actualDurationMS % 60000) / 1000 };
+                    SSTV::vec2 progressTime = { playbackMS / 60000, ((playbackMS % 60000) / 1000) };
+                    SSTV::vec2 totalTime = { (int)actualDurationMS / 60000, ((int)actualDurationMS % 60000) / 1000 };
                     
 					printf_s("\r[PLAYING][%s][%02d:%02d / %02d:%02d]", progressBarTxt, progressTime.X, progressTime.Y, totalTime.X, totalTime.Y);
 					lastPrintedPercentage = percentage;
