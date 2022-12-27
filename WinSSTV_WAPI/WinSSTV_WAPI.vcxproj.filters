@@ -27,9 +27,66 @@
     <ClInclude Include="WinSSTV_WAPI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="stb_image.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AVT.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BWX.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="fontData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MAX.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="modes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MRX.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PDX.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="R24.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="R36.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="R72.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SCX.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SSTV.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="textRendering.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="wav.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="WinSSTV_WAPI.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="modes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SSTV.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="textRendering.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="wav.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
