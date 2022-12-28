@@ -42,10 +42,19 @@ namespace wav {
     int writeIndex = 0;
 
     int init(int sampleRate) {
+        if (wavheap) { free(wavheap); }
+        expectedDurationMS = 0;
+        actualDurationMS = 0;
+        balance_AddedSamples = 0;
+        balance_SkippedSamples = 0;
+        bytesWritten = 0;
+        writeIndex = 0;
+
 		header.sampleRate = sampleRate;
         header.SBC = (header.sampleRate * header.BPS * header.channels) / 8;
         header.dataSize = (static_cast<unsigned long long>(header.sampleRate) * 15) * sizeof(short);
         header.fileSize = header.dataSize + sizeof(wavHeader);
+
         wavheap = malloc(header.fileSize);
         if (!wavheap) {
             return 0;
@@ -275,7 +284,7 @@ namespace wav {
 
     //i have no fucking idea what this does, i copied it from an example and just monkey-typewriter'd it until it worked
     char progressBarTxt[50] = {};
-    void beginPlayback(int iDeviceID) {
+    void beginPlayback(int iDeviceID, HWND callback) {
         HRESULT hr = CoInitializeEx(nullptr, COINIT_SPEED_OVER_MEMORY);
         if (FAILED(hr)) {
             printf_s("[ERR] Failed to CoInitialize!\n");
@@ -323,7 +332,9 @@ namespace wav {
         bool finished = false;
         
         ShowConsoleCursor(false);
-        
+
+        //send beginPlayback message
+
         while (!finished)
         {
             //i dont know what the padding does
@@ -350,16 +361,16 @@ namespace wav {
 
                     //progress bar
                     int percentage = (int)((float)wavPlaybackSample / (float)writeIndex * 100.f);
-					generateProgressBar(percentage, progressBarTxt, 50);
-                    
+
                     //X: Minutes, Y: Seconds
                     SSTV::vec2 progressTime = { playbackMS / 60000, ((playbackMS % 60000) / 1000) };
                     SSTV::vec2 totalTime = { (int)actualDurationMS / 60000, ((int)actualDurationMS % 60000) / 1000 };
                     
-					printf_s("\r[PLAYING][%s][%02d:%02d / %02d:%02d]", progressBarTxt, progressTime.X, progressTime.Y, totalTime.X, totalTime.Y);
+                    //send statusReport message
+
 					lastPrintedPercentage = percentage;
 				}
-                
+              
                 //next sample
                 ++wavPlaybackSample;
             }
@@ -375,6 +386,8 @@ namespace wav {
             //free up the buffer because memory
             audioRenderClient->ReleaseBuffer(numFramesToWrite, 0);
         }
+
+        //send endPlayback message
 
         audioClient->Stop();
         audioClient->Release();

@@ -15,7 +15,11 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <windows.h>
+
 #pragma once
+#define WAV_BEGINPLAYBACK (WM_APP+0)
+#define WAV_ENDPLAYBACK (WM_APP+1)
 
 namespace wav {
 
@@ -49,16 +53,24 @@ namespace wav {
         int ID;
         wchar_t name[128];
     };
+    
     struct wasapiDevicePkg {
         int deviceCount;
         int defaultDevice;
         wasapiDevice* devices;
     };
 
+    struct playbackReport {
+        SSTV::vec2 timecodeCurrent; //X: Min, Y: Sec
+        SSTV::vec2 timecodeTotal;   //X: Min, Y: Sec
+        int playedPercent;
+        bool complete;
+    };
+
     int init(int sampleRate);
     void addTone(short frequency, float duration, generatorType gt = generatorType::GT_SINE);
     int save(FILE* fptr);
-    void beginPlayback(int iDeviceID);
+    void beginPlayback(int iDeviceID, HWND callback);
     wasapiDevicePkg* WASAPIGetDevices();
     
     extern wavHeader header;

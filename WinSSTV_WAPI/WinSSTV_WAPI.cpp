@@ -39,8 +39,8 @@ HWND hWnd = 0;
 HWND btn_openFile = 0;
 #define ID_OPENFILE 1
 
-HWND btn_encode = 0;
-#define ID_ENCODE 2
+HWND btn_play = 0;
+#define ID_PLAY 2
 
 HWND cmb_encodeType = 0;
 HWND lbl_encodeType = 0;
@@ -134,6 +134,50 @@ void createConsole() {
 	freopen_s(&f, "CONOUT$", "w", stdout);
 	freopen_s(&f, "CONOUT$", "w", stderr);
 	freopen_s(&f, "CONIN$", "r", stdin);
+}
+
+bool runningPlayback = false;
+
+DWORD WINAPI beginPlaybackThreaded(LPVOID lpParameter)
+{
+    runningPlayback = true;
+    wav::beginPlayback(wasapiSelectedDevice, hWnd);
+    runningPlayback = false;
+    return 0;
+}
+
+void beginEncode() {
+    
+    if (runningPlayback) { return; }
+    
+    if (!wav::init(sampleRate)) {
+        printf_s("[ERR] Could not allocate WAV memory\n");
+        return;
+    }
+
+    //add 500ms header
+    wav::addTone(0, 500.f);
+
+    //add VOX tone
+    SSTV::addVoxTone();
+
+    //call actual encode function
+    selectedEncMode->ec(resized.data);
+
+    //add 500ms footer
+    wav::addTone(0, 500.f);
+
+    printf_s("[Encode complete, storing %i bytes]\n", wav::header.fileSize);
+    printf_s(" Expected time: %f MS\n", wav::expectedDurationMS);
+    printf_s(" Actual time  : %f MS\n", wav::actualDurationMS);
+    printf_s(" Added: %i, Skipped: %i\n", wav::balance_AddedSamples, wav::balance_SkippedSamples);
+
+    bool complete = false;
+    bool abort = false;
+
+    HANDLE thread = CreateThread(NULL, 0, beginPlaybackThreaded, NULL, 0, NULL);
+
+
 }
 
 void updateFromRGBArray(SSTV::rgb* data, SSTV::vec2 size) {
@@ -287,7 +331,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX, CW_USEDEFAULT, 0, 640, 480, nullptr, nullptr, hInstance, nullptr);
+   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX, CW_USEDEFAULT, 0, 610, 480, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -302,6 +346,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 void initUI(HWND parent) {    
     
+    /*
+          +---+
+          |   |
+          O   |
+         /|\  |
+         / \  |
+              |
+        =========
+    */
+
     //font setup
     HFONT defFont;
     defFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
@@ -311,7 +365,7 @@ void initUI(HWND parent) {
     SendMessage(btn_openFile, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
     
     //encode method label
-	lbl_encodeType = CreateWindowW(L"Static", L"Method:", WS_VISIBLE | WS_CHILD , dispImgSize.X + 15, 43, 100, 15, parent, (HMENU)(ID_ENCODETYPE & 0xFF), NULL, NULL);
+	lbl_encodeType = CreateWindowW(L"Static", L"Method:", WS_VISIBLE | WS_CHILD , dispImgSize.X + 15, 40, 100, 15, parent, (HMENU)(ID_ENCODETYPE & 0xFF), NULL, NULL);
     SendMessage(lbl_encodeType, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
     //encode method dropdown + add items
@@ -327,7 +381,7 @@ void initUI(HWND parent) {
     SendMessage(cmb_encodeType, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
 
     //overlay textbox label
-    lbl_overlay = CreateWindowW(L"Static", L"Overlay:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 67, 100, 15, parent, (HMENU)(ID_OVERLAY & 0xFF), NULL, NULL);
+    lbl_overlay = CreateWindowW(L"Static", L"Overlay:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 65, 100, 15, parent, (HMENU)(ID_OVERLAY & 0xFF), NULL, NULL);
     SendMessage(lbl_overlay, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
     
     //overlay textbox
@@ -335,9 +389,10 @@ void initUI(HWND parent) {
 	SendMessage(txt_overlay, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
     
     //RGB mode dropdown and info
-    lbl_rgbMode = CreateWindowW(L"Static", L"Colours:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 93, 100, 15, parent, (HMENU)(ID_RGBMODE & 0xFF), NULL, NULL);
+    lbl_rgbMode = CreateWindowW(L"Static", L"Colours:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 89, 100, 15, parent, (HMENU)(ID_RGBMODE & 0xFF), NULL, NULL);
     SendMessage(lbl_rgbMode, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
-    cmb_rgbMode = CreateWindowW(L"ComboBox", L"EDR", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 65, 90, 200, 25, parent, (HMENU)ID_RGBMODE, NULL, NULL);
+
+    cmb_rgbMode = CreateWindowW(L"ComboBox", L"EDR", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 65, 89, 200, 25, parent, (HMENU)ID_RGBMODE, NULL, NULL);
     SendMessage(cmb_rgbMode, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
     for (rgbModePair& rm : rgbModes) {
         SendMessage(cmb_rgbMode, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)rm.modeTxt);
@@ -345,11 +400,11 @@ void initUI(HWND parent) {
     SendMessage(cmb_rgbMode, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
 
     //samplerate dropdown label
-    lbl_sampleRate = CreateWindowW(L"Static", L"Sample Rate:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 119, 100, 15, parent, (HMENU)(ID_SAMPLERATE & 0xFF), NULL, NULL);
+    lbl_sampleRate = CreateWindowW(L"Static", L"Sample Rate:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 114, 100, 15, parent, (HMENU)(ID_SAMPLERATE & 0xFF), NULL, NULL);
     SendMessage(lbl_sampleRate, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
     //samplerate dropdown and info
-	cmb_sampleRate = CreateWindowW(L"ComboBox", L"EDR", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 90, 116, 175, 25, parent, (HMENU)ID_SAMPLERATE, NULL, NULL);
+	cmb_sampleRate = CreateWindowW(L"ComboBox", L"EDR", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 90, 114, 175, 25, parent, (HMENU)ID_SAMPLERATE, NULL, NULL);
 	SendMessage(cmb_sampleRate, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 	for (sampleRatePair& srp : standardSampleRates) {
 		SendMessage(cmb_sampleRate, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)srp.rateTxt);
@@ -357,17 +412,20 @@ void initUI(HWND parent) {
     SendMessage(cmb_sampleRate, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
 
     //playback device dropdown label
-    lbl_pbDevice = CreateWindowW(L"Static", L"Device:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 144, 130, 15, parent, (HMENU)(ID_DEVICE & 0xFF), NULL, NULL);
+    lbl_pbDevice = CreateWindowW(L"Static", L"Device:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 139, 130, 15, parent, (HMENU)(ID_DEVICE & 0xFF), NULL, NULL);
     SendMessage(lbl_pbDevice, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
     //playback device dropdown and info
-    cmb_pbDevice = CreateWindowW(L"ComboBox", L"PBD", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 65, 142, 200, 25, parent, (HMENU)ID_DEVICE, NULL, NULL);
+    cmb_pbDevice = CreateWindowW(L"ComboBox", L"PBD", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 65, 139, 200, 25, parent, (HMENU)ID_DEVICE, NULL, NULL);
     SendMessage(cmb_pbDevice, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
     for (int wd = 0; wd < wasapiPackage->deviceCount; wd++) {
         SendMessage(cmb_pbDevice, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)wasapiPackage->devices[wd].name);
     }
     SendMessage(cmb_pbDevice, CB_SETCURSEL, (WPARAM)0, (LPARAM)wasapiPackage->defaultDevice);
     
+    //play button
+    btn_play = CreateWindowW(L"Button", L"PLAY", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 15, 217, 250, 25, parent, (HMENU)ID_PLAY, NULL, NULL);
+    SendMessage(btn_play, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
     //vox checkbox
 /*	cbx_doVox = CreateWindowW(L"Button", L"VOX Tone", WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX, dispImgSize.X + 15, 140, 100, 20, parent, (HMENU)ID_DOVOX, NULL, NULL);
@@ -404,13 +462,16 @@ void reprocessImage() {
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	INITCOMMONCONTROLSEX icex;
-	icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
-	icex.dwICC = ICC_STANDARD_CLASSES;
-	InitCommonControlsEx(&icex);
     
     switch (message)
     {  
+
+        case WAV_BEGINPLAYBACK:
+        {
+            printf_s("Message recieved\n");
+            break;
+        }
+
             case WM_COMMAND:
             {
                 //Change encode mode
@@ -482,11 +543,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     }
                 }
 
+                //open file button
+                if (LOWORD(wParam) == ID_PLAY) {
+                    if (hasLoadedImage) {
+                        beginEncode();
+                    }
+                }
+
                 break;
             }
        
             case WM_CREATE: 
             {
+                //no idea
+                INITCOMMONCONTROLSEX icex;
+                icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
+                icex.dwICC = ICC_STANDARD_CLASSES;
+                InitCommonControlsEx(&icex);
+                
                 //create debug console
                 createConsole();
                 
