@@ -284,7 +284,7 @@ namespace wav {
 
     //i have no fucking idea what this does, i copied it from an example and just monkey-typewriter'd it until it worked
     char progressBarTxt[50] = {};
-    void beginPlayback(int iDeviceID, HWND callback) {
+    void beginPlayback(int iDeviceID, playbackReporter* reporter) {
         HRESULT hr = CoInitializeEx(nullptr, COINIT_SPEED_OVER_MEMORY);
         if (FAILED(hr)) {
             printf_s("[ERR] Failed to CoInitialize!\n");
@@ -330,10 +330,8 @@ namespace wav {
         int wavPlaybackSample = 0;
         int lastPrintedPercentage = 0;
         bool finished = false;
-        
-        ShowConsoleCursor(false);
 
-        //send beginPlayback message
+        reporter->running = true;
 
         while (!finished)
         {
@@ -357,18 +355,22 @@ namespace wav {
                 
                 int playbackMS = (wavPlaybackSample / header.sampleRate) * 1000;
                 
-				if (playbackMS % 100 == 0) { //redraw progress bar every 100ms
+				if (playbackMS % 100 == 0) { //report progress every 100ms
+                    if (reporter->abort) {
+                        reporter->running = false;
+                        return;
+                    }
+                    
+                    int percentage = ceil((float)wavPlaybackSample / (float)writeIndex * 1000.f);
 
-                    //progress bar
-                    int percentage = (int)((float)wavPlaybackSample / (float)writeIndex * 100.f);
-
-                    //X: Minutes, Y: Seconds
                     SSTV::vec2 progressTime = { playbackMS / 60000, ((playbackMS % 60000) / 1000) };
                     SSTV::vec2 totalTime = { (int)actualDurationMS / 60000, ((int)actualDurationMS % 60000) / 1000 };
                     
-                    //send statusReport message
-
-					lastPrintedPercentage = percentage;
+					reporter->currentMin = progressTime.X;
+					reporter->currentSec = progressTime.Y;
+					reporter->totalMin = totalTime.X;
+					reporter->totalSec = totalTime.Y;
+					reporter->playedPercent = percentage;
 				}
               
                 //next sample
@@ -378,8 +380,7 @@ namespace wav {
             //if its done then quit out of the loop
             if (wavPlaybackSample >= writeIndex) {
                 finished = true;
-                Sleep(500);
-                ShowConsoleCursor(true);
+                reporter->playedPercent = 1000;
                 break;
             }
             
@@ -387,7 +388,7 @@ namespace wav {
             audioRenderClient->ReleaseBuffer(numFramesToWrite, 0);
         }
 
-        //send endPlayback message
+        reporter->running = false;
 
         audioClient->Stop();
         audioClient->Release();

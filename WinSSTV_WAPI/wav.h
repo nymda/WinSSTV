@@ -60,17 +60,20 @@ namespace wav {
         wasapiDevice* devices;
     };
 
-    struct playbackReport {
-        SSTV::vec2 timecodeCurrent; //X: Min, Y: Sec
-        SSTV::vec2 timecodeTotal;   //X: Min, Y: Sec
+    struct playbackReporter {
+        int currentMin;
+        int currentSec;
+        int totalMin;
+        int totalSec;
         int playedPercent;
-        bool complete;
+        bool running;
+        bool abort;
     };
 
     int init(int sampleRate);
     void addTone(short frequency, float duration, generatorType gt = generatorType::GT_SINE);
     int save(FILE* fptr);
-    void beginPlayback(int iDeviceID, HWND callback);
+    void beginPlayback(int iDeviceID, playbackReporter* reporter);
     wasapiDevicePkg* WASAPIGetDevices();
     
     extern wavHeader header;
