@@ -44,9 +44,10 @@ namespace tr {
 	SSTV::rgb violet = { 255, 0,   255 };
 	
 	//this is clearly too many loops within loops but it works and im not sure how to improve it
-	int drawCharacter(SSTV::rgb colour, char c, SSTV::vec2 pos, int fontSize) {
+	int drawCharacter(SSTV::rgb colour, wchar_t c, SSTV::vec2 pos, int fontSize) {
 		int cmIndex = 0;
-		for (char cm : fontMap) {
+
+		for (wchar_t cm : fontMap) {
 			if (cm == c) {
 				
 				//i cant remember what these do
@@ -93,20 +94,14 @@ namespace tr {
 		iOrigin = origin;
 	}
 
-	void bindToCanvas(SSTV::rgb* canvas, SSTV::vec2 canvasSize) {
-		boundCanvas = canvas;
-		boundCanvasSize = canvasSize;
+	void bindToCanvas(SSTV::simpleBitmap* canvas) {
+		boundCanvas = canvas->data;
+		boundCanvasSize = canvas->size;
 	}
 	
 	//text overrunning the edge of the provided canvas will be truncated
-	void drawString(SSTV::rgb colour, int fontSize, const char* fmt...) {
+	void drawString(SSTV::rgb colour, int fontSize, const wchar_t* string) {
 		if (!boundCanvas) { return; }
-		
-		//format string into buffer
-		va_list lst;
-		va_start(lst, fmt);
-		char buffer[64];
-		vsnprintf(buffer, 64, fmt, lst);
 
 		//current offset from the origins X
 		int offset = 0;
@@ -119,12 +114,12 @@ namespace tr {
 		offset += spacerWidth * fontSize;
 		
 		//draw the required characters with 1px between them
-		for (int i = 0; i < strlen(buffer); i++) {
+		for (int i = 0; i < wcslen(string); i++) {
 			if ((iOrigin.X + offset + (CHARX * fontSize)) > boundCanvasSize.X) {
 				return;
 			}
 			
-			offset += drawCharacter(colour, buffer[i], { iOrigin.X + offset, iOrigin.Y }, fontSize);
+			offset += drawCharacter(colour, string[i], { iOrigin.X + offset, iOrigin.Y }, fontSize);
 			offset += drawSpacer(spacerWidth, { iOrigin.X + offset, iOrigin.Y }, fontSize);
 		}
 

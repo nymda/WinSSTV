@@ -35,9 +35,9 @@ namespace tr {
 	extern SSTV::rgb violet;
 	
 	void initFont();
-	void drawString(SSTV::rgb colour, int fontSize, const char* fmt...);
+	void drawString(SSTV::rgb colour, int fontSize, const wchar_t* string);
 	void setTextOrigin(SSTV::vec2 origin);
-	void bindToCanvas(SSTV::rgb* canvas, SSTV::vec2 canvasSize);
+	void bindToCanvas(SSTV::simpleBitmap* canvas);
 	extern SSTV::rgb* rgbFont;
 
 }

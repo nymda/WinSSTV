@@ -10,11 +10,17 @@
 #include "modes.h"
 #include "wav.h"
 #include "SSTV.h"
+#include "textRendering.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 #define MAX_LOADSTRING 100
+
+/*
+    doing anything in win32 is an excersize in masochism.
+    this is 50% spaghetti and 50% raw unsafe pointers. have fun.
+*/
 
 //allows for normal fonts
 #pragma comment( lib, "comctl32.lib" )
@@ -63,8 +69,7 @@ INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 
 //image buffers
 SSTV::simpleBitmap full; //users entire unprocessed image
-SSTV::simpleBitmap resized; //users image, resized to match the SSTV method
-SSTV::simpleBitmap processed; //users image, colour converted and text overlayed
+SSTV::simpleBitmap resized; //users image, resized to match the SSTV method with overlays and stuff
 
 //winAPI image handling stuff
 HBITMAP hBitmap = 0;
@@ -81,9 +86,7 @@ RECT rc = { 0, 0 };
 SSTV::vec2 dispImgPos = { 5, 6 };
 SSTV::vec2 dispImgSize = { 320, 240 };
 
-//sample rate variables
-int sampleRate = 8000;
-
+//UI selection structs and meta
 struct sampleRatePair {
     int rate;
     const wchar_t* rateTxt;
@@ -100,9 +103,6 @@ sampleRatePair standardSampleRates[] = {
 	{96000, L"96000hz"},
 };
 
-//RGB settings
-SSTV::RGBMode rgbMode = SSTV::RGBMode::RGB;
-
 struct rgbModePair {
     SSTV::RGBMode mode;
     const wchar_t* modeTxt;
@@ -114,6 +114,12 @@ rgbModePair rgbModes[] = {
 	{SSTV::RGBMode::G, L"G"},
 	{SSTV::RGBMode::B, L"B"},
 };
+
+//UI selection variables
+bool hasLoadedImage = false;
+int sampleRate = 8000;
+SSTV::RGBMode rgbMode = SSTV::RGBMode::RGB;
+encMode* selectedEncMode = &modes[0];
 
 void createConsole() {
 	AllocConsole();
@@ -178,7 +184,7 @@ void updateFromRGBArray(SSTV::rgb* data, SSTV::vec2 size) {
     ReleaseDC(0, hdcMem);
 }
 
-HBITMAP loadImageFile() {
+bool loadImageFile() {
     full.data = 0;
     full.size = { 0, 0 };
     hBitmap = 0;
@@ -212,10 +218,11 @@ HBITMAP loadImageFile() {
         int imgChannels = 0;
         wcstombs_s(0, convertedStrBuffer, ofn.lpstrFile, 128);
         full.data = (SSTV::rgb*)stbi_load(convertedStrBuffer, &full.size.X, &full.size.Y, &imgChannels, 3);
-        return 0;
+        if (!full.data) { return false; }
+        return true;
     }
+    return false;
 }
-
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
@@ -306,7 +313,9 @@ void initUI(HWND parent) {
     SendMessage(cmb_encodeType, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
     for (encMode& m : modes) {
         if (m.size != SSTV::vec2{ 0, 0 }) {
-            SendMessage(cmb_encodeType, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)m.desc);
+            wchar_t tempWriteBuffer[128] = {};
+            swprintf_s(tempWriteBuffer, 128, L"%s (%i x %i)\n", m.desc, m.size.X, m.size.Y);
+            SendMessage(cmb_encodeType, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)tempWriteBuffer);
         }
     }
     SendMessage(cmb_encodeType, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
@@ -332,7 +341,7 @@ void initUI(HWND parent) {
     SendMessage(cmb_sampleRate, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
 
     //RGB mode dropdown and info
-	lbl_rgbMode = CreateWindowW(L"Static", L"Channel:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 119, 100, 15, parent, (HMENU)(ID_RGBMODE & 0xFF), NULL, NULL);
+	lbl_rgbMode = CreateWindowW(L"Static", L"Colours:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 119, 100, 15, parent, (HMENU)(ID_RGBMODE & 0xFF), NULL, NULL);
 	SendMessage(lbl_rgbMode, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
     cmb_rgbMode = CreateWindowW(L"ComboBox", L"EDR", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 65, 116, 200, 25, parent, (HMENU)ID_RGBMODE, NULL, NULL);
 	SendMessage(cmb_rgbMode, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
@@ -351,6 +360,27 @@ void drawRect(SSTV::vec2 p1, int width, int height) {
     Rectangle(hdc, p1.X, p1.Y, p1.X + width, p1.Y + height);
 }
 
+wchar_t overlayWideBuffer[128] = L"";
+int overlayLen = 0;
+
+void reprocessImage() {
+    SSTV::resizeNN(&full, &resized);
+
+    tr::bindToCanvas(&resized);
+    tr::setTextOrigin({ 0, 0 });
+
+    if (overlayLen > 0) {
+        tr::drawString(tr::white, 1, overlayWideBuffer);
+    }
+
+    if (rgbMode != SSTV::RGBMode::RGB) {
+        //set colours
+        SSTV::setColours(&resized, rgbMode);
+    }
+
+    updateFromRGBArray(resized.data, resized.size);
+}
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	INITCOMMONCONTROLSEX icex;
@@ -362,19 +392,76 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {  
             case WM_COMMAND:
             {
-                if (LOWORD(wParam) == ID_OPENFILE) {
-
-                    loadImageFile();
-                    updateFromRGBArray(full.data, full.size);
-                    RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+                //Change encode mode
+                if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == ID_ENCODETYPE) {
+                    int ItemIndex = SendMessage((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+                    selectedEncMode = &modes[ItemIndex];
+                    resized.size = selectedEncMode->size;
+                    if (hasLoadedImage) {
+                        reprocessImage();
+                        RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+                    }
                 }
+
+                //change sample rate
+                if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == ID_SAMPLERATE) {
+                    int ItemIndex = SendMessage((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+                    sampleRate = standardSampleRates[ItemIndex].rate;
+                    printf_s("Sample rate changed to %i\n", sampleRate);
+                }
+
+                //overlay text changed
+                if (HIWORD(wParam) == EN_CHANGE && LOWORD(wParam) == ID_OVERLAY) {
+                    if (hasLoadedImage) {
+                        overlayLen = GetWindowTextW(txt_overlay, (LPWSTR)&overlayWideBuffer, 128);
+
+                        //clear if the delete character is inserted with ctrl-backspace
+                        if (overlayWideBuffer[overlayLen - 1] == 127) {
+                            overlayWideBuffer[0] = 0x00;
+                            SetWindowTextW(txt_overlay, L"");
+                        }
+
+                        reprocessImage();
+                        RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+                    }
+                }
+
+                //Change RGB mode
+                if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == ID_RGBMODE) {
+                    int ItemIndex = SendMessage((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+                    rgbMode = rgbModes[ItemIndex].mode;
+                    if (hasLoadedImage) {
+                        reprocessImage();
+                        RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+                    }
+                }
+
+                //open file button
+                if (LOWORD(wParam) == ID_OPENFILE) {
+                    if (loadImageFile()) {
+                        hasLoadedImage = true;
+                        reprocessImage();
+                        RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+                    }
+                }
+
                 break;
             }
        
             case WM_CREATE: 
             {
+                //create debug console
                 createConsole();
+                
+                //assign initial size to the bitmaps
+                resized.size = selectedEncMode->size;
+
+                //init text rendering
+                tr::initFont();
+
+                //init GUI items
                 initUI(hWnd);
+
                 break;
             }
 

@@ -112,5 +112,11 @@ namespace SSTV {
 
     //adds a 16 bit vis code
     void addLongVisCode(short visCode);
+
+    //resizes an image. Input should be a fully formed simpleBitmap, output's data will be freed and reallocated.
+    int resizeNN(SSTV::simpleBitmap* input, SSTV::simpleBitmap* output);
+
+    //sets an image to only use one channel
+    int setColours(SSTV::simpleBitmap* image, SSTV::RGBMode mode);
 }
 

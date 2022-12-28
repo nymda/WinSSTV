@@ -74,32 +74,69 @@ namespace SSTV {
         wav::addTone(1200, 30);
     }
 
-    SSTV::rgb* resizeNN(SSTV::rgb* input, vec2 inputSize, vec2 newSize) {
-        //dont need to do anything if its already the right size, return the origional to save memory
-        if (inputSize == newSize) { return 0; }
+    int resizeNN(SSTV::simpleBitmap* input, SSTV::simpleBitmap* output) {
+        //dont need to run the whole resize if they are both the same, just copy the input to the output
+        if (input->size == output->size) {
+            printf_s("[Resize not required, copying image]\n");
+            if (output->data) { free(output->data); }
+            output->data = (SSTV::rgb*)malloc((output->size.X * output->size.Y) * sizeof(SSTV::rgb));
+            memcpy(output->data, input->data, (input->size.X * input->size.Y) * sizeof(SSTV::rgb));
+            return -1;
+        }
 
-        printf_s("[Resizing: %ix%i ==> %ix%i]\n", inputSize.X, inputSize.Y, newSize.X, newSize.Y);
+        printf_s("[Resizing: %ix%i ==> %ix%i]\n", input->size.X, input->size.Y, output->size.X, output->size.Y);
 
-        SSTV::rgb* output = new SSTV::rgb[newSize.Y * newSize.X];
-        if (!output) { return 0; }
+        if (output->data) { free(output->data); }
+        output->data = (SSTV::rgb*)malloc((output->size.X * output->size.Y) * sizeof(SSTV::rgb));
+        if (!output->data) { return 0; }
 
         //calc scale values
-        float xScale = (float)newSize.X / (float)inputSize.X;
-        float yScale = (float)newSize.Y / (float)inputSize.Y;
+        float xScale = (float)output->size.X / (float)input->size.X;
+        float yScale = (float)output->size.Y / (float)input->size.Y;
 
-        for (int y = 0; y < newSize.Y; y++) {
-            for (int x = 0; x < newSize.X; x++) {
+        for (int y = 0; y < output->size.Y; y++) {
+            for (int x = 0; x < output->size.X; x++) {
                 //get the nearest pixel in the input image using the x and y scale values
-                int writeIndex = y * newSize.X + x;
-                int readIndex = (int)(y / yScale) * inputSize.X + (int)(x / xScale);
+                int writeIndex = y * output->size.X + x;
+                int readIndex = (int)(y / yScale) * input->size.X + (int)(x / xScale);
 
                 //set the pixel to the closest value, avoid any over/underflows. VS still complains about the possibility.
-                if (writeIndex <= (newSize.Y * newSize.X) && readIndex <= (inputSize.X * inputSize.Y) && writeIndex >= 0 && readIndex >= 0) {
-                    output[writeIndex] = input[readIndex];
+                if (writeIndex <= (output->size.Y * output->size.X) && readIndex <= (input->size.X * input->size.Y) && writeIndex >= 0 && readIndex >= 0) {
+                    output->data[writeIndex] = input->data[readIndex];
+                }
+                else {
+                    printf_s("Copy overrun at index %i -> %i\n", writeIndex, readIndex);
                 }
             }
         }
 
-        return output;
+        return 1;
+    }
+
+    int setColours(SSTV::simpleBitmap* image, SSTV::RGBMode mode) {
+        if (mode == SSTV::RGBMode::R) {
+            for (int x = 0; x < image->size.X * image->size.Y; x++) {
+                SSTV::rgb* px = &image->data[x];
+                px->g = px->r;
+                px->b = px->r;
+            }
+            return 0;
+        }
+        if (mode == SSTV::RGBMode::G) {
+            for (int x = 0; x < image->size.X * image->size.Y; x++) {
+                SSTV::rgb* px = &image->data[x];
+                px->r = px->g;
+                px->b = px->g;
+            }
+            return 0;
+        }
+        if (mode == SSTV::RGBMode::B) {
+            for (int x = 0; x < image->size.X * image->size.Y; x++) {
+                SSTV::rgb* px = &image->data[x];
+                px->r = px->b;
+                px->g = px->b;
+            }
+            return 0;
+        }
     }
 }
