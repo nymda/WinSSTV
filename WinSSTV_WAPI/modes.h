@@ -48,8 +48,8 @@ enum encModeID {
 
 struct encMode {
 	encModeID ID;
-	char code[8];
-	char desc[128];
+	wchar_t code[8];
+	wchar_t desc[128];
 	SSTV::vec2 size;
 	encCall ec;
 };

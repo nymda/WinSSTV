@@ -88,8 +88,8 @@ namespace SSTV {
     };
 
     struct simpleBitmap {
-        SSTV::vec2 size;
-        SSTV::rgb* data;
+        SSTV::vec2 size = { 0, 0 };
+        SSTV::rgb* data = 0;
     };
     
     struct simpleBitmapYUV {

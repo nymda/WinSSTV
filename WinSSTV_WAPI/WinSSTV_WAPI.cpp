@@ -16,6 +16,7 @@
 
 #define MAX_LOADSTRING 100
 
+//allows for normal fonts
 #pragma comment( lib, "comctl32.lib" )
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.19041.1110' \
@@ -26,18 +27,28 @@ HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
-HWND Button = 0;
+//HWNDs
 HWND hWnd = 0;
+HWND btn_openFile = 0;
+HWND btn_encode = 0;
+HWND cmb_encodeType = 0;
+HWND lbl_encodeType = 0;
+HWND cbx_doVox = 0;
+HWND txt_overlay = 0;
+HWND lbl_overlay = 0;
 
 // Forward declarations of functions included in this code module:
-ATOM MyRegisterClass(HINSTANCE hInstance);
+ATOM registerClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 
-//RGB buffer
-SSTV::rgb* imgData = 0;
-SSTV::vec2 imgSize = { 0, 0 };
+//image buffers
+SSTV::simpleBitmap full; //users entire unprocessed image
+SSTV::simpleBitmap resized; //users image, resized to match the SSTV method
+SSTV::simpleBitmap processed; //users image, colour converted and text overlayed
+
+//winAPI image handling stuff
 HBITMAP hBitmap = 0;
 HBITMAP hOldBitmap = 0;
 HDC hdc = 0;
@@ -48,6 +59,7 @@ PAINTSTRUCT ps = {};
 RECT rect = { 0, 0 };
 RECT rc = { 0, 0 };
 
+//positions for the image box
 SSTV::vec2 dispImgPos = { 5, 6 };
 SSTV::vec2 dispImgSize = { 320, 240 };
 
@@ -89,7 +101,8 @@ void updateFromRGBArray(SSTV::rgb* data, SSTV::vec2 size) {
     
 	hBitmap = CreateDIBSection(hdc, &dbmi, DIB_RGB_COLORS, (void**)&bits, NULL, 0);
 	if (!hBitmap || hBitmap == INVALID_HANDLE_VALUE) {
-		printf_s("Error: CreateDIBSection failed with error %d\r", GetLastError());
+		printf_s("Error: CreateDIBSection failed with error %d\n", GetLastError());
+        return;
 	}
 
     int BytesPerLine = size.X * 3;
@@ -115,8 +128,8 @@ void updateFromRGBArray(SSTV::rgb* data, SSTV::vec2 size) {
 }
 
 HBITMAP loadImageFile(HWND callerHwnd) {
-    imgData = 0;
-    imgSize = { 0, 0 };
+    full.data = 0;
+    full.size = { 0, 0 };
     hBitmap = 0;
     hOldBitmap = 0;
     hdc = 0;
@@ -143,11 +156,11 @@ HBITMAP loadImageFile(HWND callerHwnd) {
 
     if (GetOpenFileName(&ofn) == TRUE && ofn.lpstrFile)
     {
-        if (imgData) { free(imgData); }
+        if (full.data) { free(full.data); }
         char convertedStrBuffer[128];
         int imgChannels = 0;
         wcstombs_s(0, convertedStrBuffer, ofn.lpstrFile, 128);
-        imgData = (SSTV::rgb*)stbi_load(convertedStrBuffer, &imgSize.X, &imgSize.Y, &imgChannels, 3);
+        full.data = (SSTV::rgb*)stbi_load(convertedStrBuffer, &full.size.X, &full.size.Y, &imgChannels, 3);
         return 0;
     }
 }
@@ -161,7 +174,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_WINSSTVWAPI, szWindowClass, MAX_LOADSTRING);
-    MyRegisterClass(hInstance);
+    registerClass(hInstance);
 
     // Perform application initialization:
     if (!InitInstance (hInstance, nCmdShow))
@@ -185,7 +198,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     return (int) msg.wParam;
 }
 
-ATOM MyRegisterClass(HINSTANCE hInstance)
+ATOM registerClass(HINSTANCE hInstance)
 {
     WNDCLASSEXW wcex;
 
@@ -198,11 +211,11 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hInstance      = hInstance;
     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WINSSTVWAPI));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
+    wcex.hbrBackground  = (HBRUSH)(COLOR_BACKGROUND);
     wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_WINSSTVWAPI);
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
-
+    
     return RegisterClassExW(&wcex);
 }
 
@@ -210,7 +223,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW & ~WS_SIZEBOX & ~WS_MAXIMIZEBOX, CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX, CW_USEDEFAULT, 0, 640, 480, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -223,14 +236,55 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
-void initUI(HWND parent) {    
-    Button = CreateWindowW(L"Button", L"Open", WS_VISIBLE | WS_CHILD | WS_BORDER, 5 + 5 + dispImgSize.X, 5, 80, 25, parent, (HMENU)1, NULL, NULL);
-}
-
 SSTV::simpleBitmap test = {
     {320, 240},
     0
 };
+
+void initUI(HWND parent) {    
+    test.data = (SSTV::rgb*)malloc((320 * 240) * sizeof(SSTV::rgb));
+    
+    //font setup
+    HFONT defFont;
+    defFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+    
+    //open file button
+    btn_openFile = CreateWindowW(L"Button", L"Open Image", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 10, 5, 100, 25, parent, (HMENU)1, NULL, NULL);
+    SendMessage(btn_openFile, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+    
+    //encode method label
+	lbl_encodeType = CreateWindowW(L"Static", L"Method:", WS_VISIBLE | WS_CHILD , dispImgSize.X + 15, 43, 100, 15, parent, (HMENU)3, NULL, NULL);
+    SendMessage(lbl_encodeType, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+
+    //encode method dropdown + add items
+    cmb_encodeType = CreateWindowW(L"ComboBox", L"EDR", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 60, 40, 150, 25, parent, (HMENU)2, NULL, NULL);
+    SendMessage(cmb_encodeType, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+    for (int i = 0; i < 64; i++) {
+        if (modes[i].size != SSTV::vec2{ 0, 0 }) {
+            SendMessage(cmb_encodeType, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)modes[i].desc);
+        }
+    }
+    SendMessage(cmb_encodeType, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
+
+	//encode button
+	//btn_encode = CreateWindowW(L"Button", L"Encode", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 10, 70, 100, 25, parent, (HMENU)4, NULL, NULL);
+	//SendMessage(btn_encode, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+
+    //overlay textbox label
+    lbl_overlay = CreateWindowW(L"Static", L"Overlay:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 67, 100, 15, parent, (HMENU)6, NULL, NULL);
+    SendMessage(lbl_overlay, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+    
+    //overlay textbox
+	txt_overlay = CreateWindowW(L"Edit", L"", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 60, 65, 150, 20, parent, (HMENU)5, NULL, NULL);
+	SendMessage(txt_overlay, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+
+
+    
+}
+
+void drawRect(SSTV::vec2 p1, int width, int height) {
+    Rectangle(hdc, p1.X, p1.Y, p1.X + width, p1.Y + height);
+}
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -241,11 +295,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     
     switch (message)
     {  
-        case WM_COMMAND:
+            case WM_COMMAND:
             {
                 if (LOWORD(wParam) == 1) {
                     for (int x = 0; x < (320 * 240); x++) {
-                        test.data[x] = { (unsigned char)(rand() % 0xFF), (unsigned char)(rand() % 0xFF), (unsigned char)(rand() % 0xFF) };
+						unsigned char r = (unsigned char)(rand() % 0xFF);
+                        test.data[x] = { r, r, r };
                     }
 
                     updateFromRGBArray(test.data, test.size);
@@ -257,37 +312,40 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case WM_CREATE: 
             {
                 createConsole();
-
-				test.data = (SSTV::rgb*)malloc((320 * 240) * 3);
-                
                 initUI(hWnd);
-                
-                HFONT defFont;
-				defFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
-				SendMessage(Button, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
                 break;
             }
 
             case WM_PAINT:
             {        
                 hdc = BeginPaint(hWnd, &ps);
-                
-                //overlay image with stretching to fit the window 
-                GetClientRect(hWnd, &rect);
+
+                //draw the preview picture box
                 SetStretchBltMode(hdc, STRETCH_HALFTONE);
 
-                COLORREF color = RGB(255, 0, 0);
-                HPEN pen = CreatePen(0, 1, color);
-                SelectObject(hdc, pen);
+                //outline
+                SelectObject(hdc, CreatePen(0, 1, RGB(0, 0, 0)));
+                SelectObject(hdc, CreateSolidBrush(RGB(200, 200, 200)));
+
+				drawRect({ dispImgPos.X - 1, dispImgPos.Y - 1, }, dispImgSize.X + 2, dispImgSize.Y + 2);
                 
-                Rectangle(hdc, dispImgPos.X - 1, dispImgPos.Y - 1, dispImgSize.X + dispImgPos.X + 1, dispImgSize.Y + dispImgPos.Y + 1);       
+                //image
                 StretchBlt(hdc, dispImgPos.X, dispImgPos.Y, dispImgSize.X, dispImgSize.Y, hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
+                
+                //draw the bounding box for the image settings
+                drawRect({ dispImgPos.X + dispImgSize.X + 5, 35}, 205, 55);
                 
                 EndPaint(hWnd, &ps);
                 
                 break;
             }
 
+            case WM_CTLCOLORSTATIC:
+            {
+                HDC hdcStatic = (HDC)wParam;
+                SetBkColor(hdcStatic, RGB(200, 200, 200));
+                return (INT_PTR)CreateSolidBrush(RGB(200, 200, 200));
+            }
             
         case WM_DESTROY:
             PostQuitMessage(0);
