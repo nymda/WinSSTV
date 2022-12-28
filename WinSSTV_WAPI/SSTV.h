@@ -30,7 +30,8 @@ namespace SSTV {
         RGB = 0,
         R = 1,
         G = 2,
-        B = 3
+        B = 3,
+        MONO = 4,
     };
 
     struct vec2 {

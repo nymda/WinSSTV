@@ -45,11 +45,21 @@ namespace wav {
         short S;
     };
 
+    struct wasapiDevice {
+        int ID;
+        wchar_t name[128];
+    };
+    struct wasapiDevicePkg {
+        int deviceCount;
+        int defaultDevice;
+        wasapiDevice* devices;
+    };
+
     int init(int sampleRate);
     void addTone(short frequency, float duration, generatorType gt = generatorType::GT_SINE);
     int save(FILE* fptr);
     void beginPlayback(int iDeviceID);
-    void WASAPIListDevices();
+    wasapiDevicePkg* WASAPIGetDevices();
     
     extern wavHeader header;
     extern double expectedDurationMS;

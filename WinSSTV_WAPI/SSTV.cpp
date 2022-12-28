@@ -138,5 +138,14 @@ namespace SSTV {
             }
             return 0;
         }
+        if (mode == SSTV::RGBMode::MONO) { //mono is not selectable by the user, its just used in the BW modes
+            for (int x = 0; x < image->size.X * image->size.Y; x++) {
+                unsigned char y = SSTV::yuv(image->data[x]).y;
+                image->data[x].r = y;
+                image->data[x].g = y;
+                image->data[x].b = y;
+            }
+            return 0;
+        }
     }
 }

@@ -61,6 +61,10 @@ HWND cmb_rgbMode = 0;
 HWND lbl_rgbMode = 0;
 #define ID_RGBMODE 7
 
+HWND cmb_pbDevice = 0;
+HWND lbl_pbDevice = 0;
+#define ID_DEVICE 8
+
 // Forward declarations of functions included in this code module:
 ATOM registerClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
@@ -120,6 +124,9 @@ bool hasLoadedImage = false;
 int sampleRate = 8000;
 SSTV::RGBMode rgbMode = SSTV::RGBMode::RGB;
 encMode* selectedEncMode = &modes[0];
+bool voxTone = true;
+wav::wasapiDevicePkg* wasapiPackage = 0;
+int wasapiSelectedDevice = 0;
 
 void createConsole() {
 	AllocConsole();
@@ -185,18 +192,6 @@ void updateFromRGBArray(SSTV::rgb* data, SSTV::vec2 size) {
 }
 
 bool loadImageFile() {
-    full.data = 0;
-    full.size = { 0, 0 };
-    hBitmap = 0;
-    hOldBitmap = 0;
-    hdc = 0;
-    hdcMem = 0;
-    bm = {};
-    hI = 0;
-    ps = {};
-    rect = { 0, 0 };
-    rc = { 0, 0 };
-    
     OPENFILENAME ofn = { 0 };
     TCHAR szFile[260] = { 0 };
 
@@ -214,6 +209,17 @@ bool loadImageFile() {
     if (GetOpenFileName(&ofn) == TRUE && ofn.lpstrFile)
     {
         if (full.data) { free(full.data); }
+        full.size = { 0, 0 };
+        hBitmap = 0;
+        hOldBitmap = 0;
+        hdc = 0;
+        hdcMem = 0;
+        bm = {};
+        hI = 0;
+        ps = {};
+        rect = { 0, 0 };
+        rc = { 0, 0 };
+
         char convertedStrBuffer[128];
         int imgChannels = 0;
         wcstombs_s(0, convertedStrBuffer, ofn.lpstrFile, 128);
@@ -327,33 +333,46 @@ void initUI(HWND parent) {
     //overlay textbox
 	txt_overlay = CreateWindowW(L"Edit", L"", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 65, 65, 200, 20, parent, (HMENU)ID_OVERLAY, NULL, NULL);
 	SendMessage(txt_overlay, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+    
+    //RGB mode dropdown and info
+    lbl_rgbMode = CreateWindowW(L"Static", L"Colours:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 93, 100, 15, parent, (HMENU)(ID_RGBMODE & 0xFF), NULL, NULL);
+    SendMessage(lbl_rgbMode, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+    cmb_rgbMode = CreateWindowW(L"ComboBox", L"EDR", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 65, 90, 200, 25, parent, (HMENU)ID_RGBMODE, NULL, NULL);
+    SendMessage(cmb_rgbMode, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+    for (rgbModePair& rm : rgbModes) {
+        SendMessage(cmb_rgbMode, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)rm.modeTxt);
+    }
+    SendMessage(cmb_rgbMode, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
 
     //samplerate dropdown label
-    lbl_sampleRate = CreateWindowW(L"Static", L"Sample Rate:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 93, 100, 15, parent, (HMENU)(ID_SAMPLERATE & 0xFF), NULL, NULL);
+    lbl_sampleRate = CreateWindowW(L"Static", L"Sample Rate:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 119, 100, 15, parent, (HMENU)(ID_SAMPLERATE & 0xFF), NULL, NULL);
     SendMessage(lbl_sampleRate, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
-    
+
     //samplerate dropdown and info
-	cmb_sampleRate = CreateWindowW(L"ComboBox", L"EDR", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 90, 90, 175, 25, parent, (HMENU)ID_SAMPLERATE, NULL, NULL);
+	cmb_sampleRate = CreateWindowW(L"ComboBox", L"EDR", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 90, 116, 175, 25, parent, (HMENU)ID_SAMPLERATE, NULL, NULL);
 	SendMessage(cmb_sampleRate, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 	for (sampleRatePair& srp : standardSampleRates) {
 		SendMessage(cmb_sampleRate, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)srp.rateTxt);
 	}
     SendMessage(cmb_sampleRate, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
 
-    //RGB mode dropdown and info
-	lbl_rgbMode = CreateWindowW(L"Static", L"Colours:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 119, 100, 15, parent, (HMENU)(ID_RGBMODE & 0xFF), NULL, NULL);
-	SendMessage(lbl_rgbMode, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
-    cmb_rgbMode = CreateWindowW(L"ComboBox", L"EDR", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 65, 116, 200, 25, parent, (HMENU)ID_RGBMODE, NULL, NULL);
-	SendMessage(cmb_rgbMode, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
-	for (rgbModePair& rm : rgbModes) {
-		SendMessage(cmb_rgbMode, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)rm.modeTxt);
-	}
-	SendMessage(cmb_rgbMode, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
-        
+    //playback device dropdown label
+    lbl_pbDevice = CreateWindowW(L"Static", L"Device:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 144, 130, 15, parent, (HMENU)(ID_DEVICE & 0xFF), NULL, NULL);
+    SendMessage(lbl_pbDevice, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+
+    //playback device dropdown and info
+    cmb_pbDevice = CreateWindowW(L"ComboBox", L"PBD", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 65, 142, 200, 25, parent, (HMENU)ID_DEVICE, NULL, NULL);
+    SendMessage(cmb_pbDevice, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+    for (int wd = 0; wd < wasapiPackage->deviceCount; wd++) {
+        SendMessage(cmb_pbDevice, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)wasapiPackage->devices[wd].name);
+    }
+    SendMessage(cmb_pbDevice, CB_SETCURSEL, (WPARAM)0, (LPARAM)wasapiPackage->defaultDevice);
+    
+
     //vox checkbox
-	cbx_doVox = CreateWindowW(L"Button", L"VOX Tone", WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX, dispImgSize.X + 15, 140, 100, 20, parent, (HMENU)ID_DOVOX, NULL, NULL);
+/*	cbx_doVox = CreateWindowW(L"Button", L"VOX Tone", WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX, dispImgSize.X + 15, 140, 100, 20, parent, (HMENU)ID_DOVOX, NULL, NULL);
 	SendMessage(cbx_doVox, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
-    SendMessage(cbx_doVox, BM_SETCHECK, BST_CHECKED, 0);  
+    SendMessage(cbx_doVox, BM_SETCHECK, BST_CHECKED, 0); */ 
 }
 
 void drawRect(SSTV::vec2 p1, int width, int height) {
@@ -374,8 +393,10 @@ void reprocessImage() {
     }
 
     if (rgbMode != SSTV::RGBMode::RGB) {
-        //set colours
         SSTV::setColours(&resized, rgbMode);
+    }
+    else if (selectedEncMode->ID == encModeID::EM_BW8 || selectedEncMode->ID == encModeID::EM_BW12) {
+        SSTV::setColours(&resized, SSTV::RGBMode::MONO);
     }
 
     updateFromRGBArray(resized.data, resized.size);
@@ -436,6 +457,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     }
                 }
 
+                //Change selected playback device
+                if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == ID_DEVICE) {
+                    int ItemIndex = SendMessage((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+                    wasapiSelectedDevice = wasapiPackage->devices[ItemIndex].ID;
+                }
+
+                //Change vox enabled
+                if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == ID_DOVOX) {
+                    if (SendMessage((HWND)lParam, (UINT)BM_GETCHECK, (WPARAM)0, (LPARAM)0) == BST_CHECKED) {
+                        voxTone = true;
+                    }
+                    else {
+                        voxTone = false;
+                    }
+                }
+
                 //open file button
                 if (LOWORD(wParam) == ID_OPENFILE) {
                     if (loadImageFile()) {
@@ -458,6 +495,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                 //init text rendering
                 tr::initFont();
+
+                //get wasapi devices
+                wasapiPackage = wav::WASAPIGetDevices();
 
                 //init GUI items
                 initUI(hWnd);
@@ -486,7 +526,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 SelectObject(hdc, CreateSolidBrush(RGB(200, 200, 200)));
                 
                 //draw the bounding box for the image settings
-                drawRect({ dispImgPos.X + dispImgSize.X + 5, 35}, 260, 150);
+                drawRect({ dispImgPos.X + dispImgSize.X + 5, 35}, 260, 212);
                 
                 EndPaint(hWnd, &ps);
                 

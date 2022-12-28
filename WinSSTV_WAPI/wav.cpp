@@ -112,33 +112,47 @@ namespace wav {
         }
     }
 
-    void WASAPIListDevices() {
+    wasapiDevicePkg* WASAPIGetDevices() {
+
+        wasapiDevicePkg* pkg = (wasapiDevicePkg*)malloc(sizeof(wasapiDevicePkg));
+        if (!pkg) { return 0; }
+
+        IMMDevice* defaultDevice = NULL;
+
 		IMMDeviceEnumerator* pEnumerator = NULL;
 		IMMDeviceCollection* pCollection = NULL;
 		UINT count;
         HRESULT hr = CoInitializeEx(nullptr, COINIT_SPEED_OVER_MEMORY); //coinit again
         if (FAILED(hr)) {
             printf_s("[ERR] Failed to CoInitialize!\n");
-            return;
+            return 0 ;
         }
 		hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pEnumerator); //create instance
 		if (FAILED(hr)) {
 			printf_s("[ERR] Failed to create device enumerator!\n");
-			return;
+			return 0 ;
 		}
 		hr = pEnumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &pCollection); //get all audio endpoints
 		if (FAILED(hr)) {
 			printf_s("[ERR] Failed to enumerate audio endpoints!\n");
-			return;
+			return 0 ;
 		}
 		hr = pCollection->GetCount(&count); //get the number of audio endpoints
 		if (FAILED(hr)) {
 			printf_s("[ERR] Failed to get device count!\n");
-			return;
+			return 0;
 		}
 
-        //list em
-        printf_s("[PLAYBACK DEVICES]\n");
+        hr = pEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &defaultDevice);
+        if (FAILED(hr)) {
+            printf_s("[ERR] Failed to get default device!\n");
+            return 0;
+        }
+
+        pkg->deviceCount = count;
+        pkg->devices = (wasapiDevice*)calloc(count, sizeof(wasapiDevice));
+        if (!pkg->devices) { return 0; }
+
 		for (UINT i = 0; i < count; i++) {
 			IMMDevice* pDevice = NULL;
 			IPropertyStore* pProps = NULL;
@@ -147,28 +161,31 @@ namespace wav {
 			hr = pCollection->Item(i, &pDevice); //get the audio endpoint at index i
 			if (FAILED(hr)) {
 				printf_s("[ERR] Failed to get device %d!\n", i);
-				return;
+				return 0;
 			}
 			hr = pDevice->OpenPropertyStore(STGM_READ, &pProps); //get its properties
 			if (FAILED(hr)) {
 				printf_s("[ERR] Failed to open property store for device %d!\n", i);
-				return;
+				return 0;
 			}
 			hr = pProps->GetValue(PKEY_Device_FriendlyName, &varName); //get its name
 			if (FAILED(hr)) {
 				printf_s("[ERR] Failed to get friendly name for device %d!\n", i);
-				return;
+				return 0;
 			}
-            
+
             //print its index and name
-			printf_s(" [%d]: %S\n", i, varName.pwszVal);
-            
+            pkg->devices[i].ID = i;
+            swprintf_s(pkg->devices[i].name, 128, varName.pwszVal);
+
 			PropVariantClear(&varName);
 			pProps->Release();
 			pDevice->Release();
 		}
 		pCollection->Release();
 		pEnumerator->Release();
+
+        return pkg;
     }
     
     wchar_t* WASAPIGetDeviceIdByIndex(int index) {
