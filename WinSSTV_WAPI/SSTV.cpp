@@ -73,4 +73,33 @@ namespace SSTV {
 
         wav::addTone(1200, 30);
     }
+
+    SSTV::rgb* resizeNN(SSTV::rgb* input, vec2 inputSize, vec2 newSize) {
+        //dont need to do anything if its already the right size, return the origional to save memory
+        if (inputSize == newSize) { return 0; }
+
+        printf_s("[Resizing: %ix%i ==> %ix%i]\n", inputSize.X, inputSize.Y, newSize.X, newSize.Y);
+
+        SSTV::rgb* output = new SSTV::rgb[newSize.Y * newSize.X];
+        if (!output) { return 0; }
+
+        //calc scale values
+        float xScale = (float)newSize.X / (float)inputSize.X;
+        float yScale = (float)newSize.Y / (float)inputSize.Y;
+
+        for (int y = 0; y < newSize.Y; y++) {
+            for (int x = 0; x < newSize.X; x++) {
+                //get the nearest pixel in the input image using the x and y scale values
+                int writeIndex = y * newSize.X + x;
+                int readIndex = (int)(y / yScale) * inputSize.X + (int)(x / xScale);
+
+                //set the pixel to the closest value, avoid any over/underflows. VS still complains about the possibility.
+                if (writeIndex <= (newSize.Y * newSize.X) && readIndex <= (inputSize.X * inputSize.Y) && writeIndex >= 0 && readIndex >= 0) {
+                    output[writeIndex] = input[readIndex];
+                }
+            }
+        }
+
+        return output;
+    }
 }

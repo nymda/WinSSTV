@@ -26,6 +26,13 @@ const double CFMultiplier = 3.1372549;
 namespace SSTV {
     int clampUC(int input);
 
+    enum RGBMode {
+        RGB = 0,
+        R = 1,
+        G = 2,
+        B = 3
+    };
+
     struct vec2 {
         int X;
         int Y;

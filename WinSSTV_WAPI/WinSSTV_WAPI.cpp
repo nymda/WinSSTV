@@ -29,13 +29,31 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 //HWNDs
 HWND hWnd = 0;
+
 HWND btn_openFile = 0;
+#define ID_OPENFILE 1
+
 HWND btn_encode = 0;
+#define ID_ENCODE 2
+
 HWND cmb_encodeType = 0;
 HWND lbl_encodeType = 0;
+#define ID_ENCODETYPE 3
+
 HWND cbx_doVox = 0;
+#define ID_DOVOX 4
+
 HWND txt_overlay = 0;
 HWND lbl_overlay = 0;
+#define ID_OVERLAY 5
+
+HWND cmb_sampleRate = 0;
+HWND lbl_sampleRate = 0;
+#define ID_SAMPLERATE 6
+
+HWND cmb_rgbMode = 0;
+HWND lbl_rgbMode = 0;
+#define ID_RGBMODE 7
 
 // Forward declarations of functions included in this code module:
 ATOM registerClass(HINSTANCE hInstance);
@@ -63,6 +81,39 @@ RECT rc = { 0, 0 };
 SSTV::vec2 dispImgPos = { 5, 6 };
 SSTV::vec2 dispImgSize = { 320, 240 };
 
+//sample rate variables
+int sampleRate = 8000;
+
+struct sampleRatePair {
+    int rate;
+    const wchar_t* rateTxt;
+};
+
+sampleRatePair standardSampleRates[] = { 
+    {8000,  L"8000hz"}, 
+    {11025, L"11025hz"},
+	{16000, L"16000hz"},
+	{22050, L"22050hz"},
+	{32000, L"32000hz"},
+	{44100, L"44100hz"},
+	{48000, L"48000hz"},
+	{96000, L"96000hz"},
+};
+
+//RGB settings
+SSTV::RGBMode rgbMode = SSTV::RGBMode::RGB;
+
+struct rgbModePair {
+    SSTV::RGBMode mode;
+    const wchar_t* modeTxt;
+};
+
+rgbModePair rgbModes[] = {
+	{SSTV::RGBMode::RGB, L"RGB"},
+	{SSTV::RGBMode::R, L"R"},
+	{SSTV::RGBMode::G, L"G"},
+	{SSTV::RGBMode::B, L"B"},
+};
 
 void createConsole() {
 	AllocConsole();
@@ -127,7 +178,7 @@ void updateFromRGBArray(SSTV::rgb* data, SSTV::vec2 size) {
     ReleaseDC(0, hdcMem);
 }
 
-HBITMAP loadImageFile(HWND callerHwnd) {
+HBITMAP loadImageFile() {
     full.data = 0;
     full.size = { 0, 0 };
     hBitmap = 0;
@@ -236,50 +287,64 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
-SSTV::simpleBitmap test = {
-    {320, 240},
-    0
-};
-
 void initUI(HWND parent) {    
-    test.data = (SSTV::rgb*)malloc((320 * 240) * sizeof(SSTV::rgb));
     
     //font setup
     HFONT defFont;
     defFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
     
     //open file button
-    btn_openFile = CreateWindowW(L"Button", L"Open Image", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 10, 5, 100, 25, parent, (HMENU)1, NULL, NULL);
+    btn_openFile = CreateWindowW(L"Button", L"Open Image", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 10, 5, 100, 25, parent, (HMENU)ID_OPENFILE, NULL, NULL);
     SendMessage(btn_openFile, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
     
     //encode method label
-	lbl_encodeType = CreateWindowW(L"Static", L"Method:", WS_VISIBLE | WS_CHILD , dispImgSize.X + 15, 43, 100, 15, parent, (HMENU)3, NULL, NULL);
+	lbl_encodeType = CreateWindowW(L"Static", L"Method:", WS_VISIBLE | WS_CHILD , dispImgSize.X + 15, 43, 100, 15, parent, (HMENU)(ID_ENCODETYPE & 0xFF), NULL, NULL);
     SendMessage(lbl_encodeType, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
     //encode method dropdown + add items
-    cmb_encodeType = CreateWindowW(L"ComboBox", L"EDR", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 60, 40, 150, 25, parent, (HMENU)2, NULL, NULL);
+    cmb_encodeType = CreateWindowW(L"ComboBox", L"EDR", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 65, 40, 200, 25, parent, (HMENU)ID_ENCODETYPE, NULL, NULL);
     SendMessage(cmb_encodeType, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
-    for (int i = 0; i < 64; i++) {
-        if (modes[i].size != SSTV::vec2{ 0, 0 }) {
-            SendMessage(cmb_encodeType, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)modes[i].desc);
+    for (encMode& m : modes) {
+        if (m.size != SSTV::vec2{ 0, 0 }) {
+            SendMessage(cmb_encodeType, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)m.desc);
         }
     }
     SendMessage(cmb_encodeType, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
 
-	//encode button
-	//btn_encode = CreateWindowW(L"Button", L"Encode", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 10, 70, 100, 25, parent, (HMENU)4, NULL, NULL);
-	//SendMessage(btn_encode, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
-
     //overlay textbox label
-    lbl_overlay = CreateWindowW(L"Static", L"Overlay:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 67, 100, 15, parent, (HMENU)6, NULL, NULL);
+    lbl_overlay = CreateWindowW(L"Static", L"Overlay:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 67, 100, 15, parent, (HMENU)(ID_OVERLAY & 0xFF), NULL, NULL);
     SendMessage(lbl_overlay, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
     
     //overlay textbox
-	txt_overlay = CreateWindowW(L"Edit", L"", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 60, 65, 150, 20, parent, (HMENU)5, NULL, NULL);
+	txt_overlay = CreateWindowW(L"Edit", L"", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 65, 65, 200, 20, parent, (HMENU)ID_OVERLAY, NULL, NULL);
 	SendMessage(txt_overlay, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
-
+    //samplerate dropdown label
+    lbl_sampleRate = CreateWindowW(L"Static", L"Sample Rate:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 93, 100, 15, parent, (HMENU)(ID_SAMPLERATE & 0xFF), NULL, NULL);
+    SendMessage(lbl_sampleRate, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
     
+    //samplerate dropdown and info
+	cmb_sampleRate = CreateWindowW(L"ComboBox", L"EDR", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 90, 90, 175, 25, parent, (HMENU)ID_SAMPLERATE, NULL, NULL);
+	SendMessage(cmb_sampleRate, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+	for (sampleRatePair& srp : standardSampleRates) {
+		SendMessage(cmb_sampleRate, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)srp.rateTxt);
+	}
+    SendMessage(cmb_sampleRate, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
+
+    //RGB mode dropdown and info
+	lbl_rgbMode = CreateWindowW(L"Static", L"Channel:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 119, 100, 15, parent, (HMENU)(ID_RGBMODE & 0xFF), NULL, NULL);
+	SendMessage(lbl_rgbMode, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+    cmb_rgbMode = CreateWindowW(L"ComboBox", L"EDR", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 65, 116, 200, 25, parent, (HMENU)ID_RGBMODE, NULL, NULL);
+	SendMessage(cmb_rgbMode, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+	for (rgbModePair& rm : rgbModes) {
+		SendMessage(cmb_rgbMode, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)rm.modeTxt);
+	}
+	SendMessage(cmb_rgbMode, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
+        
+    //vox checkbox
+	cbx_doVox = CreateWindowW(L"Button", L"VOX Tone", WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX, dispImgSize.X + 15, 140, 100, 20, parent, (HMENU)ID_DOVOX, NULL, NULL);
+	SendMessage(cbx_doVox, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+    SendMessage(cbx_doVox, BM_SETCHECK, BST_CHECKED, 0);  
 }
 
 void drawRect(SSTV::vec2 p1, int width, int height) {
@@ -297,13 +362,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {  
             case WM_COMMAND:
             {
-                if (LOWORD(wParam) == 1) {
-                    for (int x = 0; x < (320 * 240); x++) {
-						unsigned char r = (unsigned char)(rand() % 0xFF);
-                        test.data[x] = { r, r, r };
-                    }
+                if (LOWORD(wParam) == ID_OPENFILE) {
 
-                    updateFromRGBArray(test.data, test.size);
+                    loadImageFile();
+                    updateFromRGBArray(full.data, full.size);
                     RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
                 }
                 break;
@@ -323,8 +385,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 //draw the preview picture box
                 SetStretchBltMode(hdc, STRETCH_HALFTONE);
 
-                //outline
-                SelectObject(hdc, CreatePen(0, 1, RGB(0, 0, 0)));
+                //outline for picture box
+                SelectObject(hdc, CreatePen(0, 1, RGB(255, 0, 0)));
                 SelectObject(hdc, CreateSolidBrush(RGB(200, 200, 200)));
 
 				drawRect({ dispImgPos.X - 1, dispImgPos.Y - 1, }, dispImgSize.X + 2, dispImgSize.Y + 2);
@@ -332,8 +394,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 //image
                 StretchBlt(hdc, dispImgPos.X, dispImgPos.Y, dispImgSize.X, dispImgSize.Y, hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
                 
+                //other bounding boxes
+                SelectObject(hdc, CreatePen(0, 1, RGB(0, 0, 0)));
+                SelectObject(hdc, CreateSolidBrush(RGB(200, 200, 200)));
+                
                 //draw the bounding box for the image settings
-                drawRect({ dispImgPos.X + dispImgSize.X + 5, 35}, 205, 55);
+                drawRect({ dispImgPos.X + dispImgSize.X + 5, 35}, 260, 150);
                 
                 EndPaint(hWnd, &ps);
                 
