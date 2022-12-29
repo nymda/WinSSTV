@@ -73,6 +73,9 @@ HWND pbr_playbackBar = 0;
 HWND lbl_playbackTime = 0;
 #define ID_PLAYBACKBAR 9
 
+HWND btn_stopPlayback = 0;
+#define ID_STOPPLAYBACK 10
+
 // Forward declarations of functions included in this code module:
 ATOM registerClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
@@ -153,7 +156,7 @@ wav::playbackReporter pr = {};
 int rsCountdown = 0;
 VOID CALLBACK timerCallback(HWND hwnd, UINT message, UINT idTimer, DWORD dwTime)
 {
-	if (!pr.running) {
+	if (!pr.running && pr.playedPercent > 0) {
 		pr = {};
 	}
 
@@ -365,7 +368,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance; // Store instance handle in our global variable
 
-	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX, CW_USEDEFAULT, 0, 610, 338, nullptr, nullptr, hInstance, nullptr);
+	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX, CW_USEDEFAULT, 0, 610, 349, nullptr, nullptr, hInstance, nullptr);
 
 	if (!hWnd)
 	{
@@ -462,11 +465,14 @@ void initUI(HWND parent) {
 	SendMessage(btn_play, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//playback time label
-	lbl_playbackTime = CreateWindowW(L"Static", L"00:00:00 / 00:00:00", WS_VISIBLE | WS_CHILD, 5, 280, 250, 15, parent, (HMENU)(ID_PLAYBACKBAR & 0xFF), NULL, NULL);
+	lbl_playbackTime = CreateWindowW(L"Static", L"00:00:00 / 00:00:00", WS_VISIBLE | WS_CHILD, 5, 290, 250, 15, parent, (HMENU)(ID_PLAYBACKBAR & 0xFF), NULL, NULL);
 	SendMessage(lbl_playbackTime, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	pbr_playbackBar = CreateWindowW(L"msctls_trackbar32", L"", WS_VISIBLE | WS_CHILD | WS_DISABLED, 4, 250, 586, 25, parent, (HMENU)ID_PLAYBACKBAR, NULL, NULL);
 	SendMessage(pbr_playbackBar, TBM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(0, 1000));
+
+	btn_stopPlayback = CreateWindowW(L"Button", L"STOP", WS_VISIBLE | WS_CHILD | WS_BORDER, 540, 280, 50, 25, parent, (HMENU)ID_STOPPLAYBACK, NULL, NULL);
+	SendMessage(btn_stopPlayback, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 }
 
@@ -597,6 +603,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		if (LOWORD(wParam) == ID_PLAY) {
 			if (hasLoadedImage) {
 				beginEncode();
+			}
+		}
+
+		if (LOWORD(wParam) == ID_STOPPLAYBACK) {
+			if (pr.running) {
+				pr.abort = true;
 			}
 		}
 
