@@ -351,7 +351,7 @@ namespace wav {
             for (int frameIndex = 0; frameIndex < numFramesToWrite; ++frameIndex)
             {                    
 				//squirt the audio data from the wav file into the playback buffer
-                *buffer++ = ((short*)wavheap)[wavPlaybackSample];
+                *buffer++ = (short)((float)((short*)wavheap)[wavPlaybackSample] * reporter->volume);
                 
                 float playbackMS = ((float)wavPlaybackSample / (float)header.sampleRate) * 1000.f;
 

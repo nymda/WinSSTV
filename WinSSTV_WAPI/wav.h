@@ -70,6 +70,7 @@ namespace wav {
         int playedPercent;
         bool running;
         bool abort;
+        float volume = 1.f;
     };
 
     int init(int sampleRate);

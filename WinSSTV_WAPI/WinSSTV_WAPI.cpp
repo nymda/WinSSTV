@@ -76,6 +76,10 @@ HWND lbl_playbackTime = 0;
 HWND btn_stopPlayback = 0;
 #define ID_STOPPLAYBACK 10
 
+HWND pbr_volBar = 0;
+HWND lbl_volBar = 0;
+#define ID_VOLUMEBAR 11
+
 // Forward declarations of functions included in this code module:
 ATOM registerClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
@@ -210,8 +214,6 @@ void beginEncode() {
 	bool abort = false;
 
 	HANDLE thread = CreateThread(NULL, 0, beginPlaybackThreaded, NULL, 0, NULL);
-
-
 }
 
 void updateFromRGBArray(SSTV::rgb* data, SSTV::vec2 size) {
@@ -399,7 +401,7 @@ void initUI(HWND parent) {
 	SendMessage(btn_openFile, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//encode method label
-	lbl_encodeType = CreateWindowW(L"Static", L"Method:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 40, 100, 15, parent, (HMENU)(ID_ENCODETYPE & 0xFF), NULL, NULL);
+	lbl_encodeType = CreateWindowW(L"Static", L"Method:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 40 + 3, 50, 15, parent, (HMENU)(ID_ENCODETYPE & 0xFF), NULL, NULL);
 	SendMessage(lbl_encodeType, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//encode method dropdown + add items
@@ -415,7 +417,7 @@ void initUI(HWND parent) {
 	SendMessage(cmb_encodeType, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
 
 	//overlay textbox label
-	lbl_overlay = CreateWindowW(L"Static", L"Overlay:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 65, 100, 15, parent, (HMENU)(ID_OVERLAY & 0xFF), NULL, NULL);
+	lbl_overlay = CreateWindowW(L"Static", L"Overlay:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 65 + 3, 50, 15, parent, (HMENU)(ID_OVERLAY & 0xFF), NULL, NULL);
 	SendMessage(lbl_overlay, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//overlay textbox
@@ -423,7 +425,7 @@ void initUI(HWND parent) {
 	SendMessage(txt_overlay, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//RGB mode dropdown and info
-	lbl_rgbMode = CreateWindowW(L"Static", L"Colours:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 89, 100, 15, parent, (HMENU)(ID_RGBMODE & 0xFF), NULL, NULL);
+	lbl_rgbMode = CreateWindowW(L"Static", L"Colours:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 89 + 3, 50, 15, parent, (HMENU)(ID_RGBMODE & 0xFF), NULL, NULL);
 	SendMessage(lbl_rgbMode, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	cmb_rgbMode = CreateWindowW(L"ComboBox", L"EDR", WS_VISIBLE | WS_CHILD | WS_BORDER | CBS_DROPDOWNLIST, dispImgSize.X + 65, 89, 200, 25, parent, (HMENU)ID_RGBMODE, NULL, NULL);
@@ -434,7 +436,7 @@ void initUI(HWND parent) {
 	SendMessage(cmb_rgbMode, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
 
 	//samplerate dropdown label
-	lbl_sampleRate = CreateWindowW(L"Static", L"Sample Rate:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 114, 100, 15, parent, (HMENU)(ID_SAMPLERATE & 0xFF), NULL, NULL);
+	lbl_sampleRate = CreateWindowW(L"Static", L"Sample Rate:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 114 + 3, 75, 15, parent, (HMENU)(ID_SAMPLERATE & 0xFF), NULL, NULL);
 	SendMessage(lbl_sampleRate, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//samplerate dropdown and info
@@ -446,7 +448,7 @@ void initUI(HWND parent) {
 	SendMessage(cmb_sampleRate, CB_SETCURSEL, (WPARAM)0, (LPARAM)0);
 
 	//playback device dropdown label
-	lbl_pbDevice = CreateWindowW(L"Static", L"Device:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 139, 130, 15, parent, (HMENU)(ID_DEVICE & 0xFF), NULL, NULL);
+	lbl_pbDevice = CreateWindowW(L"Static", L"Device:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 139 + 3, 50, 15, parent, (HMENU)(ID_DEVICE & 0xFF), NULL, NULL);
 	SendMessage(lbl_pbDevice, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//playback device dropdown and info
@@ -462,7 +464,7 @@ void initUI(HWND parent) {
 	SendMessage(btn_play, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//playback time label
-	lbl_playbackTime = CreateWindowW(L"Static", L"00:00:00 / 00:00:00", WS_VISIBLE | WS_CHILD, 5, 290, 250, 15, parent, (HMENU)(ID_PLAYBACKBAR & 0xFF), NULL, NULL);
+	lbl_playbackTime = CreateWindowW(L"Static", L"00:00:00 / 00:00:00", WS_VISIBLE | WS_CHILD, 5, 290 + 3, 100, 15, parent, (HMENU)(ID_PLAYBACKBAR & 0xFF), NULL, NULL);
 	SendMessage(lbl_playbackTime, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	pbr_playbackBar = CreateWindowW(L"msctls_trackbar32", L"", WS_VISIBLE | WS_CHILD | WS_DISABLED, 4, 250, 586, 25, parent, (HMENU)ID_PLAYBACKBAR, NULL, NULL);
@@ -470,6 +472,13 @@ void initUI(HWND parent) {
 
 	btn_stopPlayback = CreateWindowW(L"Button", L"STOP", WS_VISIBLE | WS_CHILD | WS_BORDER, 540, 280, 50, 25, parent, (HMENU)ID_STOPPLAYBACK, NULL, NULL);
 	SendMessage(btn_stopPlayback, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+
+	pbr_volBar = CreateWindowW(L"msctls_trackbar32", L"", WS_VISIBLE | WS_CHILD, 385, 280, 150, 25, parent, (HMENU)ID_VOLUMEBAR, NULL, NULL);
+	SendMessage(pbr_volBar, TBM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(0, 100));
+	SendMessage(pbr_volBar, TBM_SETPOS, (WPARAM)1, (LPARAM)(100));
+
+	lbl_volBar = CreateWindowW(L"Static", L"Volume (100%):", WS_VISIBLE | WS_CHILD, 305, 280 + 3, 80, 25, parent, (HMENU)(ID_VOLUMEBAR & 0xFF), NULL, NULL);
+	SendMessage(lbl_volBar, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 }
 
@@ -505,6 +514,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	switch (message)
 	{
+
+		case WM_HSCROLL:
+		{
+			if (lParam == (LPARAM)pbr_volBar) {
+				int iVol = SendMessage((HWND)pbr_volBar, (UINT)TBM_GETPOS, (WPARAM)0, (LPARAM)0);
+				pr.volume = (float)((float)iVol / 100.f);
+
+				wchar_t volTxt[100];
+				swprintf_s(volTxt, 100, L"Volume (%03d%%):", iVol);
+				SetWindowText(lbl_volBar, volTxt);
+
+			}
+			break;
+		}
+
 		case WM_NOTIFY: //makes the trackbar tick always blue, allowing for it to be disabled to ignore user input
 		{
 			if (((LPNMHDR)lParam)->code == NM_CUSTOMDRAW) {
@@ -515,8 +539,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					return CDRF_NOTIFYITEMDRAW;
 				}
 				else if (lpNMCD->dwDrawStage == CDDS_ITEMPREPAINT && lpNMCD->dwItemSpec == TBCD_THUMB) {
-					SelectObject(lpNMCD->hdc, CreatePen(0, 1, RGB(100, 0, 0)));
-					SelectObject(lpNMCD->hdc, CreateSolidBrush(RGB(100, 0, 0)));
+					if (wParam == ID_PLAYBACKBAR) {
+						SelectObject(lpNMCD->hdc, CreatePen(0, 1, RGB(100, 0, 0)));
+						SelectObject(lpNMCD->hdc, CreateSolidBrush(RGB(100, 0, 0)));
+					}
+					else {
+						SelectObject(lpNMCD->hdc, CreatePen(0, 1, RGB(0, 120, 215)));
+						SelectObject(lpNMCD->hdc, CreateSolidBrush(RGB(0, 120, 215)));
+					}
+
 					Rectangle(lpNMCD->hdc, lpNMCD->rc.left, lpNMCD->rc.top, lpNMCD->rc.right, lpNMCD->rc.bottom);
 					return CDRF_SKIPDEFAULT;
 				}
@@ -541,7 +572,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == ID_SAMPLERATE) {
 				int ItemIndex = SendMessage((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
 				sampleRate = standardSampleRates[ItemIndex].rate;
-				printf_s("Sample rate changed to %i\n", sampleRate);
 			}
 
 			//overlay text changed

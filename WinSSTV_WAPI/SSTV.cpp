@@ -77,14 +77,14 @@ namespace SSTV {
     int resizeNN(SSTV::simpleBitmap* input, SSTV::simpleBitmap* output) {
         //dont need to run the whole resize if they are both the same, just copy the input to the output
         if (input->size == output->size) {
-            printf_s("[Resize not required, copying image]\n");
+            //printf_s("[Resize not required, copying image]\n");
             if (output->data) { free(output->data); }
             output->data = (SSTV::rgb*)malloc((output->size.X * output->size.Y) * sizeof(SSTV::rgb));
             memcpy(output->data, input->data, (input->size.X * input->size.Y) * sizeof(SSTV::rgb));
             return -1;
         }
 
-        printf_s("[Resizing: %ix%i ==> %ix%i]\n", input->size.X, input->size.Y, output->size.X, output->size.Y);
+        //printf_s("[Resizing: %ix%i ==> %ix%i]\n", input->size.X, input->size.Y, output->size.X, output->size.Y);
 
         if (output->data) { free(output->data); }
         output->data = (SSTV::rgb*)malloc((output->size.X * output->size.Y) * sizeof(SSTV::rgb));
