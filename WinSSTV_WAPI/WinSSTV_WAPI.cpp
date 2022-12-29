@@ -28,6 +28,8 @@
 name='Microsoft.Windows.Common-Controls' version='6.0.19041.1110' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
+COLORREF bg = RGB(200, 200, 200);
+
 // Global Variables:
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
@@ -86,10 +88,6 @@ HBITMAP hBitmap = 0;
 HBITMAP hOldBitmap = 0;
 BITMAP bm = {};
 
-HBITMAP hBitmap_PBar = 0;
-HBITMAP hOldBitmap_PBar = 0;
-BITMAP bm_PBar = {};
-
 HDC hdc = 0;
 HDC hdcMem = 0;
 HINSTANCE hI = 0;
@@ -100,6 +98,9 @@ RECT rc = { 0, 0 };
 //positions for the image box
 SSTV::vec2 dispImgPos = { 5, 6 };
 SSTV::vec2 dispImgSize = { 320, 240 };
+
+//rect to update for the progress bar
+RECT pBarRect = { 3, 299, 570, 200 };
 
 //UI selection structs and meta
 struct sampleRatePair {
@@ -155,8 +156,8 @@ VOID CALLBACK timerCallback(HWND hwnd, UINT message, UINT idTimer, DWORD dwTime)
 		return;
 	}
 
-	//update the progress bar
-	SendMessage(pbr_playbackBar, PBM_SETPOS, (WPARAM)pr.playedPercent, (LPARAM)0);
+	//RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_NOFRAME | RDW_NOINTERNALPAINT);
+	SendMessage(pbr_playbackBar, TBM_SETPOS, (WPARAM)1, (LPARAM)pr.playedPercent);
 
 	//update the label
 	wchar_t timeTxt[100];
@@ -259,61 +260,6 @@ void updateFromRGBArray(SSTV::rgb* data, SSTV::vec2 size) {
 	ReleaseDC(0, hdcMem);
 }
 
-void updateProgressBarFromRGBArray(SSTV::rgb* data, SSTV::vec2 size) {
-	BITMAPINFOHEADER bmih;
-	bmih.biSize = sizeof(BITMAPINFOHEADER);
-	bmih.biWidth = size.X;
-	bmih.biHeight = -size.Y;
-	bmih.biPlanes = 1;
-	bmih.biBitCount = 24;
-	bmih.biCompression = BI_RGB;
-	bmih.biSizeImage = 0;
-	bmih.biXPelsPerMeter = 10;
-	bmih.biYPelsPerMeter = 10;
-	bmih.biClrUsed = 0;
-	bmih.biClrImportant = 0;
-
-	BITMAPINFO dbmi;
-	ZeroMemory(&dbmi, sizeof(dbmi));
-	dbmi.bmiHeader = bmih;
-	dbmi.bmiColors->rgbBlue = 0;
-	dbmi.bmiColors->rgbGreen = 0;
-	dbmi.bmiColors->rgbRed = 0;
-	dbmi.bmiColors->rgbReserved = 0;
-	unsigned char* bits = 0;
-
-	HDC hdc = GetDC(hWnd);
-
-	DeleteObject(SelectObject(hdcMem, hOldBitmap_PBar));
-
-	hBitmap_PBar = CreateDIBSection(hdc, &dbmi, DIB_RGB_COLORS, (void**)&bits, NULL, 0);
-	if (!hBitmap_PBar || hBitmap_PBar == INVALID_HANDLE_VALUE) {
-		printf_s("Error: CreateDIBSection failed with error %d\n", GetLastError());
-		return;
-	}
-
-	int BytesPerLine = size.X * 3;
-	if (BytesPerLine % 4 != 0) { BytesPerLine += 4 - BytesPerLine % 4; }
-	for (int y = 0; y < size.Y; y++) {
-		PBYTE line = bits;
-		for (int x = 0; x < size.X; x++) {
-			line[0] = data[y * size.X + x].b;
-			line[1] = data[y * size.X + x].g;
-			line[2] = data[y * size.X + x].r;
-			line += 3;
-		}
-		bits += BytesPerLine;
-	}
-
-	GetObject(hBitmap, sizeof(BITMAP), &bm_PBar);
-	hdc = GetDC(hWnd);
-	hdcMem = CreateCompatibleDC(hdc);
-	hOldBitmap_PBar = (HBITMAP)SelectObject(hdcMem, hBitmap_PBar);
-
-	ReleaseDC(0, hdc);
-	ReleaseDC(0, hdcMem);
-}
-
 bool loadImageFile() {
 	OPENFILENAME ofn = { 0 };
 	TCHAR szFile[260] = { 0 };
@@ -398,7 +344,7 @@ ATOM registerClass(HINSTANCE hInstance)
 	wcex.hInstance = hInstance;
 	wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_WINSSTVWAPI));
 	wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
-	wcex.hbrBackground = (HBRUSH)(COLOR_BACKGROUND);
+	wcex.hbrBackground = CreateSolidBrush(bg);
 	wcex.lpszMenuName = MAKEINTRESOURCEW(IDC_WINSSTVWAPI);
 	wcex.lpszClassName = szWindowClass;
 	wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
@@ -507,13 +453,12 @@ void initUI(HWND parent) {
 	SendMessage(btn_play, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//playback time label
-	lbl_playbackTime = CreateWindowW(L"Static", L"00:00:00 / 00:00:00", WS_VISIBLE | WS_CHILD, 5, 277, 250, 15, parent, (HMENU)(ID_PLAYBACKBAR & 0xFF), NULL, NULL);
+	lbl_playbackTime = CreateWindowW(L"Static", L"00:00:00 / 00:00:00", WS_VISIBLE | WS_CHILD, 5, 280, 250, 15, parent, (HMENU)(ID_PLAYBACKBAR & 0xFF), NULL, NULL);
 	SendMessage(lbl_playbackTime, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
-	//playback bar | todo: make this look better than just a normal progress bar
-	pbr_playbackBar = CreateWindowW(L"msctls_progress32", L"", WS_VISIBLE | WS_CHILD, 4, 250, 586, 25, parent, (HMENU)ID_PLAYBACKBAR, NULL, NULL);
-	SendMessage(pbr_playbackBar, PBM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(0, 1000));
-	SendMessage(pbr_playbackBar, PBM_SETSTEP, (WPARAM)1, (LPARAM)0);
+	pbr_playbackBar = CreateWindowW(L"msctls_trackbar32", L"", WS_VISIBLE | WS_CHILD | WS_DISABLED, 4, 250, 586, 25, parent, (HMENU)ID_PLAYBACKBAR, NULL, NULL);
+	SendMessage(pbr_playbackBar, TBM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(0, 1000));
+
 }
 
 void drawRect(SSTV::vec2 p1, int width, int height) {
@@ -549,15 +494,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	switch (message)
 	{
 
-	case WM_TIMER:
+	case WM_NOTIFY: //makes the trackbar tick always blue, allowing for it to be disabled to ignore user input
 	{
-		printf_s("Timer tick\n");
-		//if (wParam == ID_TIMER) {
-		//	if (pr.running) {
-		//		//update progress bar
-		//		printf_s("Timer tick\n");
-		//	}
-		//}
+		if (((LPNMHDR)lParam)->code == NM_CUSTOMDRAW) {
+			LPNMCUSTOMDRAW lpNMCD = (LPNMCUSTOMDRAW)lParam;
+			UINT idc = lpNMCD->hdr.idFrom;
+
+			if (lpNMCD->dwDrawStage == CDDS_PREPAINT) {
+				return CDRF_NOTIFYITEMDRAW;
+			}
+			else if (lpNMCD->dwDrawStage == CDDS_ITEMPREPAINT && lpNMCD->dwItemSpec == TBCD_THUMB) {
+				SelectObject(lpNMCD->hdc, CreatePen(0, 1, RGB(0, 120, 215)));
+				SelectObject(lpNMCD->hdc, CreateSolidBrush(RGB(0, 120, 215)));
+				Rectangle(lpNMCD->hdc, lpNMCD->rc.left, lpNMCD->rc.top, lpNMCD->rc.right, lpNMCD->rc.bottom);
+				return CDRF_SKIPDEFAULT;
+			}
+		}
 		break;
 	}
 
@@ -664,10 +616,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		
 		//start the playback update timer
 		::SetTimer(hWnd, ID_TIMER, 100, (TIMERPROC)timerCallback);
-		
+
 		//init GUI items
 		initUI(hWnd);
-			
+
 		break;
 	}
 
@@ -680,7 +632,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		//outline for picture box
 		SelectObject(hdc, CreatePen(0, 1, RGB(255, 0, 0)));
-		SelectObject(hdc, CreateSolidBrush(RGB(200, 200, 200)));
+		SelectObject(hdc, CreateSolidBrush(bg));
 
 		drawRect({ dispImgPos.X - 1, dispImgPos.Y - 1, }, dispImgSize.X + 2, dispImgSize.Y + 2);
 
@@ -689,15 +641,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		//other bounding boxes
 		SelectObject(hdc, CreatePen(0, 1, RGB(0, 0, 0)));
-		SelectObject(hdc, CreateSolidBrush(RGB(200, 200, 200)));
+		SelectObject(hdc, CreateSolidBrush(bg));
 
 		//draw the bounding box for the image settings
 		drawRect({ dispImgPos.X + dispImgSize.X + 5, 35 }, 260, 212);
 
-		//progress bar stretchblt
-		updateProgressBarFromRGBArray(full.data, full.size);
-		StretchBlt(hdc, 5, 300, 260, 20, hdcMem, 0, 0, bm_PBar.bmWidth, bm_PBar.bmHeight, SRCCOPY);
-		
 		EndPaint(hWnd, &ps);
 
 		break;
@@ -706,8 +654,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_CTLCOLORSTATIC:
 	{
 		HDC hdcStatic = (HDC)wParam;
-		SetBkColor(hdcStatic, RGB(200, 200, 200));
-		return (INT_PTR)CreateSolidBrush(RGB(200, 200, 200));
+		SetBkColor(hdcStatic, bg);
+		return (INT_PTR)CreateSolidBrush(bg);
 	}
 
 	case WM_DESTROY:
