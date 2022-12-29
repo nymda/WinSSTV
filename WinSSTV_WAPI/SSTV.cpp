@@ -86,8 +86,8 @@ namespace SSTV {
 
         //printf_s("[Resizing: %ix%i ==> %ix%i]\n", input->size.X, input->size.Y, output->size.X, output->size.Y);
 
-        if (output->data) { free(output->data); }
-        output->data = (SSTV::rgb*)malloc((output->size.X * output->size.Y) * sizeof(SSTV::rgb));
+        if (output->data) { output->data = (SSTV::rgb*)realloc(output->data, (output->size.X * output->size.Y) * sizeof(SSTV::rgb)); }
+        else { output->data = (SSTV::rgb*)malloc((output->size.X * output->size.Y) * sizeof(SSTV::rgb)); }
         if (!output->data) { return 0; }
 
         //calc scale values

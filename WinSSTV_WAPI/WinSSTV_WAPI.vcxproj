@@ -24,6 +24,7 @@
     <ProjectGuid>{20346280-4810-40ef-8325-e4c0c8fcc0ac}</ProjectGuid>
     <RootNamespace>WinSSTVWAPI</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>WinSSTV</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -145,19 +146,21 @@
     <ClInclude Include="targetver.h" />
     <ClInclude Include="textRendering.h" />
     <ClInclude Include="wav.h" />
-    <ClInclude Include="WinSSTV_WAPI.h" />
+    <ClInclude Include="WinSSTV.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="modes.cpp" />
     <ClCompile Include="SSTV.cpp" />
     <ClCompile Include="textRendering.cpp" />
     <ClCompile Include="wav.cpp" />
-    <ClCompile Include="WinSSTV_WAPI.cpp" />
+    <ClCompile Include="WinSSTV.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="WinSSTV_WAPI.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\..\..\..\Downloads\icon.png" />
+    <Image Include="icon1.ico" />
     <Image Include="small.ico" />
     <Image Include="WinSSTV_WAPI.ico" />
   </ItemGroup>

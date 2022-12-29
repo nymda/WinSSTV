@@ -24,7 +24,7 @@
     <ClInclude Include="Resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="WinSSTV_WAPI.h">
+    <ClInclude Include="WinSSTV.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="stb_image.h">
@@ -74,7 +74,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="WinSSTV_WAPI.cpp">
+    <ClCompile Include="WinSSTV.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="modes.cpp">
@@ -100,6 +100,12 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="WinSSTV_WAPI.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\..\..\Downloads\icon.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="icon1.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

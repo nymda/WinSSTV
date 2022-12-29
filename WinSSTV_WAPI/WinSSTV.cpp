@@ -5,7 +5,7 @@
 #include <windows.h>
 
 #include "framework.h"
-#include "WinSSTV_WAPI.h"
+#include "WinSSTV.h"
 
 #include "modes.h"
 #include "wav.h"
