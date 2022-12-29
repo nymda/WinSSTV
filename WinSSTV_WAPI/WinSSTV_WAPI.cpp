@@ -150,10 +150,11 @@ void createConsole() {
 
 wav::playbackReporter pr = {};
 
+int rsCountdown = 0;
 VOID CALLBACK timerCallback(HWND hwnd, UINT message, UINT idTimer, DWORD dwTime)
 {
 	if (!pr.running) {
-		return;
+		pr = {};
 	}
 
 	//RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_NOFRAME | RDW_NOINTERNALPAINT);
@@ -162,6 +163,14 @@ VOID CALLBACK timerCallback(HWND hwnd, UINT message, UINT idTimer, DWORD dwTime)
 	//update the label
 	wchar_t timeTxt[100];
 	swprintf_s(timeTxt, 100, L"%02d:%02d:%02d / %02d:%02d:%02d", pr.currentMin, pr.currentSec, pr.currentMs / 100, pr.totalMin, pr.totalSec, pr.totalMs / 100);
+
+	if (pr.playedPercent == 100) {
+		rsCountdown++;
+		if (rsCountdown >= 5) {
+			pr = {};
+			rsCountdown = 0;
+		}
+	}
 	SetWindowText(lbl_playbackTime, timeTxt);
 }
 
@@ -356,7 +365,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance; // Store instance handle in our global variable
 
-	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX, CW_USEDEFAULT, 0, 610, 480, nullptr, nullptr, hInstance, nullptr);
+	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX, CW_USEDEFAULT, 0, 610, 338, nullptr, nullptr, hInstance, nullptr);
 
 	if (!hWnd)
 	{
@@ -504,8 +513,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				return CDRF_NOTIFYITEMDRAW;
 			}
 			else if (lpNMCD->dwDrawStage == CDDS_ITEMPREPAINT && lpNMCD->dwItemSpec == TBCD_THUMB) {
-				SelectObject(lpNMCD->hdc, CreatePen(0, 1, RGB(0, 120, 215)));
-				SelectObject(lpNMCD->hdc, CreateSolidBrush(RGB(0, 120, 215)));
+				SelectObject(lpNMCD->hdc, CreatePen(0, 1, RGB(100, 0, 0)));
+				SelectObject(lpNMCD->hdc, CreateSolidBrush(RGB(100, 0, 0)));
 				Rectangle(lpNMCD->hdc, lpNMCD->rc.left, lpNMCD->rc.top, lpNMCD->rc.right, lpNMCD->rc.bottom);
 				return CDRF_SKIPDEFAULT;
 			}
