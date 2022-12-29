@@ -84,9 +84,14 @@ SSTV::simpleBitmap resized; //users image, resized to match the SSTV method with
 //winAPI image handling stuff
 HBITMAP hBitmap = 0;
 HBITMAP hOldBitmap = 0;
+BITMAP bm = {};
+
+HBITMAP hBitmap_PBar = 0;
+HBITMAP hOldBitmap_PBar = 0;
+BITMAP bm_PBar = {};
+
 HDC hdc = 0;
 HDC hdcMem = 0;
-BITMAP bm = {};
 HINSTANCE hI = 0;
 PAINTSTRUCT ps = {};
 RECT rect = { 0, 0 };
@@ -155,10 +160,9 @@ VOID CALLBACK timerCallback(HWND hwnd, UINT message, UINT idTimer, DWORD dwTime)
 
 	//update the label
 	wchar_t timeTxt[100];
-	swprintf_s(timeTxt, 100, L"%02d:%02d:%02d / %02d:%02d:%02d", pr.currentMin, pr.currentSec, pr.currentMs / 10, pr.totalMin, pr.totalSec, ((pr.totalMs / 100) * 100) / 10);
+	swprintf_s(timeTxt, 100, L"%02d:%02d:%02d / %02d:%02d:%02d", pr.currentMin, pr.currentSec, pr.currentMs / 100, pr.totalMin, pr.totalSec, pr.totalMs / 100);
 	SetWindowText(lbl_playbackTime, timeTxt);
 }
-
 
 DWORD WINAPI beginPlaybackThreaded(LPVOID lpParameter)
 {
@@ -250,6 +254,61 @@ void updateFromRGBArray(SSTV::rgb* data, SSTV::vec2 size) {
 	hdc = GetDC(hWnd);
 	hdcMem = CreateCompatibleDC(hdc);
 	hOldBitmap = (HBITMAP)SelectObject(hdcMem, hBitmap);
+
+	ReleaseDC(0, hdc);
+	ReleaseDC(0, hdcMem);
+}
+
+void updateProgressBarFromRGBArray(SSTV::rgb* data, SSTV::vec2 size) {
+	BITMAPINFOHEADER bmih;
+	bmih.biSize = sizeof(BITMAPINFOHEADER);
+	bmih.biWidth = size.X;
+	bmih.biHeight = -size.Y;
+	bmih.biPlanes = 1;
+	bmih.biBitCount = 24;
+	bmih.biCompression = BI_RGB;
+	bmih.biSizeImage = 0;
+	bmih.biXPelsPerMeter = 10;
+	bmih.biYPelsPerMeter = 10;
+	bmih.biClrUsed = 0;
+	bmih.biClrImportant = 0;
+
+	BITMAPINFO dbmi;
+	ZeroMemory(&dbmi, sizeof(dbmi));
+	dbmi.bmiHeader = bmih;
+	dbmi.bmiColors->rgbBlue = 0;
+	dbmi.bmiColors->rgbGreen = 0;
+	dbmi.bmiColors->rgbRed = 0;
+	dbmi.bmiColors->rgbReserved = 0;
+	unsigned char* bits = 0;
+
+	HDC hdc = GetDC(hWnd);
+
+	DeleteObject(SelectObject(hdcMem, hOldBitmap_PBar));
+
+	hBitmap_PBar = CreateDIBSection(hdc, &dbmi, DIB_RGB_COLORS, (void**)&bits, NULL, 0);
+	if (!hBitmap_PBar || hBitmap_PBar == INVALID_HANDLE_VALUE) {
+		printf_s("Error: CreateDIBSection failed with error %d\n", GetLastError());
+		return;
+	}
+
+	int BytesPerLine = size.X * 3;
+	if (BytesPerLine % 4 != 0) { BytesPerLine += 4 - BytesPerLine % 4; }
+	for (int y = 0; y < size.Y; y++) {
+		PBYTE line = bits;
+		for (int x = 0; x < size.X; x++) {
+			line[0] = data[y * size.X + x].b;
+			line[1] = data[y * size.X + x].g;
+			line[2] = data[y * size.X + x].r;
+			line += 3;
+		}
+		bits += BytesPerLine;
+	}
+
+	GetObject(hBitmap, sizeof(BITMAP), &bm_PBar);
+	hdc = GetDC(hWnd);
+	hdcMem = CreateCompatibleDC(hdc);
+	hOldBitmap_PBar = (HBITMAP)SelectObject(hdcMem, hBitmap_PBar);
 
 	ReleaseDC(0, hdc);
 	ReleaseDC(0, hdcMem);
@@ -448,7 +507,7 @@ void initUI(HWND parent) {
 	SendMessage(btn_play, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//playback time label
-	lbl_playbackTime = CreateWindowW(L"Static", L"00:00:000 / 00:00:000", WS_VISIBLE | WS_CHILD, 5, 277, 250, 15, parent, (HMENU)(ID_PLAYBACKBAR & 0xFF), NULL, NULL);
+	lbl_playbackTime = CreateWindowW(L"Static", L"00:00:00 / 00:00:00", WS_VISIBLE | WS_CHILD, 5, 277, 250, 15, parent, (HMENU)(ID_PLAYBACKBAR & 0xFF), NULL, NULL);
 	SendMessage(lbl_playbackTime, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//playback bar | todo: make this look better than just a normal progress bar
@@ -608,7 +667,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		
 		//init GUI items
 		initUI(hWnd);
-
+			
 		break;
 	}
 
@@ -635,6 +694,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		//draw the bounding box for the image settings
 		drawRect({ dispImgPos.X + dispImgSize.X + 5, 35 }, 260, 212);
 
+		//progress bar stretchblt
+		updateProgressBarFromRGBArray(full.data, full.size);
+		StretchBlt(hdc, 5, 300, 260, 20, hdcMem, 0, 0, bm_PBar.bmWidth, bm_PBar.bmHeight, SRCCOPY);
+		
 		EndPaint(hWnd, &ps);
 
 		break;
