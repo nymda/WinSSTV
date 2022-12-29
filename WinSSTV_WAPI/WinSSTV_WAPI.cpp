@@ -102,9 +102,6 @@ RECT rc = { 0, 0 };
 SSTV::vec2 dispImgPos = { 5, 6 };
 SSTV::vec2 dispImgSize = { 320, 240 };
 
-//rect to update for the progress bar
-RECT pBarRect = { 3, 299, 570, 200 };
-
 //UI selection structs and meta
 struct sampleRatePair {
 	int rate;
@@ -368,7 +365,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance; // Store instance handle in our global variable
 
-	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX, CW_USEDEFAULT, 0, 610, 349, nullptr, nullptr, hInstance, nullptr);
+	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX, CW_USEDEFAULT, 0, 610, 349, nullptr, nullptr, hInstance, nullptr);
 
 	if (!hWnd)
 	{
@@ -508,183 +505,182 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	switch (message)
 	{
+		case WM_NOTIFY: //makes the trackbar tick always blue, allowing for it to be disabled to ignore user input
+		{
+			if (((LPNMHDR)lParam)->code == NM_CUSTOMDRAW) {
+				LPNMCUSTOMDRAW lpNMCD = (LPNMCUSTOMDRAW)lParam;
+				UINT idc = lpNMCD->hdr.idFrom;
 
-	case WM_NOTIFY: //makes the trackbar tick always blue, allowing for it to be disabled to ignore user input
-	{
-		if (((LPNMHDR)lParam)->code == NM_CUSTOMDRAW) {
-			LPNMCUSTOMDRAW lpNMCD = (LPNMCUSTOMDRAW)lParam;
-			UINT idc = lpNMCD->hdr.idFrom;
-
-			if (lpNMCD->dwDrawStage == CDDS_PREPAINT) {
-				return CDRF_NOTIFYITEMDRAW;
-			}
-			else if (lpNMCD->dwDrawStage == CDDS_ITEMPREPAINT && lpNMCD->dwItemSpec == TBCD_THUMB) {
-				SelectObject(lpNMCD->hdc, CreatePen(0, 1, RGB(100, 0, 0)));
-				SelectObject(lpNMCD->hdc, CreateSolidBrush(RGB(100, 0, 0)));
-				Rectangle(lpNMCD->hdc, lpNMCD->rc.left, lpNMCD->rc.top, lpNMCD->rc.right, lpNMCD->rc.bottom);
-				return CDRF_SKIPDEFAULT;
-			}
-		}
-		break;
-	}
-
-	case WM_COMMAND:
-	{
-		//Change encode mode
-		if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == ID_ENCODETYPE) {
-			int ItemIndex = SendMessage((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-			selectedEncMode = &modes[ItemIndex];
-			resized.size = selectedEncMode->size;
-			if (hasLoadedImage) {
-				reprocessImage();
-				RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
-			}
-		}
-
-		//change sample rate
-		if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == ID_SAMPLERATE) {
-			int ItemIndex = SendMessage((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-			sampleRate = standardSampleRates[ItemIndex].rate;
-			printf_s("Sample rate changed to %i\n", sampleRate);
-		}
-
-		//overlay text changed
-		if (HIWORD(wParam) == EN_CHANGE && LOWORD(wParam) == ID_OVERLAY) {
-			if (hasLoadedImage) {
-				overlayLen = GetWindowTextW(txt_overlay, (LPWSTR)&overlayWideBuffer, 128);
-
-				//clear if the delete character is inserted with ctrl-backspace
-				if (overlayWideBuffer[overlayLen - 1] == 127) {
-					overlayWideBuffer[0] = 0x00;
-					SetWindowTextW(txt_overlay, L"");
+				if (lpNMCD->dwDrawStage == CDDS_PREPAINT) {
+					return CDRF_NOTIFYITEMDRAW;
 				}
-
-				reprocessImage();
-				RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+				else if (lpNMCD->dwDrawStage == CDDS_ITEMPREPAINT && lpNMCD->dwItemSpec == TBCD_THUMB) {
+					SelectObject(lpNMCD->hdc, CreatePen(0, 1, RGB(100, 0, 0)));
+					SelectObject(lpNMCD->hdc, CreateSolidBrush(RGB(100, 0, 0)));
+					Rectangle(lpNMCD->hdc, lpNMCD->rc.left, lpNMCD->rc.top, lpNMCD->rc.right, lpNMCD->rc.bottom);
+					return CDRF_SKIPDEFAULT;
+				}
 			}
+			break;
 		}
 
-		//Change RGB mode
-		if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == ID_RGBMODE) {
-			int ItemIndex = SendMessage((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-			rgbMode = rgbModes[ItemIndex].mode;
-			if (hasLoadedImage) {
-				reprocessImage();
-				RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+		case WM_COMMAND:
+		{
+			//Change encode mode
+			if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == ID_ENCODETYPE) {
+				int ItemIndex = SendMessage((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+				selectedEncMode = &modes[ItemIndex];
+				resized.size = selectedEncMode->size;
+				if (hasLoadedImage) {
+					reprocessImage();
+					RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+				}
 			}
+
+			//change sample rate
+			if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == ID_SAMPLERATE) {
+				int ItemIndex = SendMessage((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+				sampleRate = standardSampleRates[ItemIndex].rate;
+				printf_s("Sample rate changed to %i\n", sampleRate);
+			}
+
+			//overlay text changed
+			if (HIWORD(wParam) == EN_CHANGE && LOWORD(wParam) == ID_OVERLAY) {
+				if (hasLoadedImage) {
+					overlayLen = GetWindowTextW(txt_overlay, (LPWSTR)&overlayWideBuffer, 128);
+
+					//clear if the delete character is inserted with ctrl-backspace
+					if (overlayWideBuffer[overlayLen - 1] == 127) {
+						overlayWideBuffer[0] = 0x00;
+						SetWindowTextW(txt_overlay, L"");
+					}
+
+					reprocessImage();
+					RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+				}
+			}
+
+			//Change RGB mode
+			if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == ID_RGBMODE) {
+				int ItemIndex = SendMessage((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+				rgbMode = rgbModes[ItemIndex].mode;
+				if (hasLoadedImage) {
+					reprocessImage();
+					RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+				}
+			}
+
+			//Change selected playback device
+			if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == ID_DEVICE) {
+				int ItemIndex = SendMessage((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
+				wasapiSelectedDevice = wasapiPackage->devices[ItemIndex].ID;
+			}
+
+			//Change vox enabled
+			if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == ID_DOVOX) {
+				if (SendMessage((HWND)lParam, (UINT)BM_GETCHECK, (WPARAM)0, (LPARAM)0) == BST_CHECKED) {
+					voxTone = true;
+				}
+				else {
+					voxTone = false;
+				}
+			}
+
+			//open file button
+			if (LOWORD(wParam) == ID_OPENFILE) {
+				if (loadImageFile()) {
+					hasLoadedImage = true;
+					reprocessImage();
+					RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+				}
+			}
+
+			//open file button
+			if (LOWORD(wParam) == ID_PLAY) {
+				if (hasLoadedImage) {
+					beginEncode();
+				}
+			}
+
+			if (LOWORD(wParam) == ID_STOPPLAYBACK) {
+				if (pr.running) {
+					pr.abort = true;
+				}
+			}
+
+			break;
 		}
 
-		//Change selected playback device
-		if (HIWORD(wParam) == CBN_SELCHANGE && LOWORD(wParam) == ID_DEVICE) {
-			int ItemIndex = SendMessage((HWND)lParam, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-			wasapiSelectedDevice = wasapiPackage->devices[ItemIndex].ID;
-		}
+		case WM_CREATE:
+		{
+			//no idea
+			INITCOMMONCONTROLSEX icex;
+			icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
+			icex.dwICC = ICC_STANDARD_CLASSES;
+			InitCommonControlsEx(&icex);
 
-		//Change vox enabled
-		if (HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == ID_DOVOX) {
-			if (SendMessage((HWND)lParam, (UINT)BM_GETCHECK, (WPARAM)0, (LPARAM)0) == BST_CHECKED) {
-				voxTone = true;
-			}
-			else {
-				voxTone = false;
-			}
-		}
+			//create debug console
+			createConsole();
 
-		//open file button
-		if (LOWORD(wParam) == ID_OPENFILE) {
-			if (loadImageFile()) {
-				hasLoadedImage = true;
-				reprocessImage();
-				RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
-			}
-		}
+			//assign initial size to the bitmaps
+			resized.size = selectedEncMode->size;
 
-		//open file button
-		if (LOWORD(wParam) == ID_PLAY) {
-			if (hasLoadedImage) {
-				beginEncode();
-			}
-		}
+			//init text rendering
+			tr::initFont();
 
-		if (LOWORD(wParam) == ID_STOPPLAYBACK) {
-			if (pr.running) {
-				pr.abort = true;
-			}
-		}
-
-		break;
-	}
-
-	case WM_CREATE:
-	{
-		//no idea
-		INITCOMMONCONTROLSEX icex;
-		icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
-		icex.dwICC = ICC_STANDARD_CLASSES;
-		InitCommonControlsEx(&icex);
-
-		//create debug console
-		createConsole();
-
-		//assign initial size to the bitmaps
-		resized.size = selectedEncMode->size;
-
-		//init text rendering
-		tr::initFont();
-
-		//get wasapi devices
-		wasapiPackage = wav::WASAPIGetDevices();
+			//get wasapi devices
+			wasapiPackage = wav::WASAPIGetDevices();
 		
-		//start the playback update timer
-		::SetTimer(hWnd, ID_TIMER, 100, (TIMERPROC)timerCallback);
+			//start the playback update timer
+			::SetTimer(hWnd, ID_TIMER, 100, (TIMERPROC)timerCallback);
 
-		//init GUI items
-		initUI(hWnd);
+			//init GUI items
+			initUI(hWnd);
 
-		break;
-	}
+			break;
+		}
 
-	case WM_PAINT:
-	{
-		hdc = BeginPaint(hWnd, &ps);
+		case WM_PAINT:
+		{
+			hdc = BeginPaint(hWnd, &ps);
 
-		//draw the preview picture box
-		SetStretchBltMode(hdc, STRETCH_HALFTONE);
+			//draw the preview picture box
+			SetStretchBltMode(hdc, STRETCH_HALFTONE);
 
-		//outline for picture box
-		SelectObject(hdc, CreatePen(0, 1, RGB(255, 0, 0)));
-		SelectObject(hdc, CreateSolidBrush(bg));
+			//outline for picture box
+			SelectObject(hdc, CreatePen(0, 1, RGB(255, 0, 0)));
+			SelectObject(hdc, CreateSolidBrush(bg));
 
-		drawRect({ dispImgPos.X - 1, dispImgPos.Y - 1, }, dispImgSize.X + 2, dispImgSize.Y + 2);
+			drawRect({ dispImgPos.X - 1, dispImgPos.Y - 1, }, dispImgSize.X + 2, dispImgSize.Y + 2);
 
-		//image
-		StretchBlt(hdc, dispImgPos.X, dispImgPos.Y, dispImgSize.X, dispImgSize.Y, hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
+			//image
+			StretchBlt(hdc, dispImgPos.X, dispImgPos.Y, dispImgSize.X, dispImgSize.Y, hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
 
-		//other bounding boxes
-		SelectObject(hdc, CreatePen(0, 1, RGB(0, 0, 0)));
-		SelectObject(hdc, CreateSolidBrush(bg));
+			//other bounding boxes
+			SelectObject(hdc, CreatePen(0, 1, RGB(0, 0, 0)));
+			SelectObject(hdc, CreateSolidBrush(bg));
 
-		//draw the bounding box for the image settings
-		drawRect({ dispImgPos.X + dispImgSize.X + 5, 35 }, 260, 212);
+			//draw the bounding box for the image settings
+			drawRect({ dispImgPos.X + dispImgSize.X + 5, 35 }, 260, 212);
 
-		EndPaint(hWnd, &ps);
+			EndPaint(hWnd, &ps);
 
-		break;
-	}
+			break;
+		}
 
-	case WM_CTLCOLORSTATIC:
-	{
-		HDC hdcStatic = (HDC)wParam;
-		SetBkColor(hdcStatic, bg);
-		return (INT_PTR)CreateSolidBrush(bg);
-	}
+		case WM_CTLCOLORSTATIC:
+		{
+			HDC hdcStatic = (HDC)wParam;
+			SetBkColor(hdcStatic, bg);
+			return (INT_PTR)CreateSolidBrush(bg);
+		}
 
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		break;
+		case WM_DESTROY:
+			PostQuitMessage(0);
+			break;
 
-	default:
-		return DefWindowProc(hWnd, message, wParam, lParam);
+		default:
+			return DefWindowProc(hWnd, message, wParam, lParam);
 	}
 	return 0;
 }
