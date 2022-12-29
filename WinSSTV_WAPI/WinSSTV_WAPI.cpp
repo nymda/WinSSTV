@@ -68,6 +68,7 @@ HWND lbl_pbDevice = 0;
 #define ID_TIMER 101
 
 HWND pbr_playbackBar = 0;
+HWND lbl_playbackTime = 0;
 #define ID_PLAYBACKBAR 9
 
 // Forward declarations of functions included in this code module:
@@ -442,15 +443,14 @@ void initUI(HWND parent) {
 	btn_play = CreateWindowW(L"Button", L"PLAY", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 15, 217, 250, 25, parent, (HMENU)ID_PLAY, NULL, NULL);
 	SendMessage(btn_play, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
-	//playback bar
-	pbr_playbackBar = CreateWindowW(L"msctls_progress32", L"", WS_VISIBLE | WS_CHILD | PBS_SMOOTH, 4, 250, 586, 25, parent, (HMENU)ID_PLAYBACKBAR, NULL, NULL);
+	//playback time label
+	lbl_playbackTime = CreateWindowW(L"Static", L"00:00 / 00:00", WS_VISIBLE | WS_CHILD, 5, 277, 250, 15, parent, (HMENU)(ID_PLAYBACKBAR & 0xFF), NULL, NULL);
+	SendMessage(lbl_playbackTime, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+
+	//playback bar | todo: make this look better than just a normal progress bar
+	pbr_playbackBar = CreateWindowW(L"msctls_progress32", L"", WS_VISIBLE | WS_CHILD, 4, 250, 586, 25, parent, (HMENU)ID_PLAYBACKBAR, NULL, NULL);
 	SendMessage(pbr_playbackBar, PBM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(0, 1000));
 	SendMessage(pbr_playbackBar, PBM_SETSTEP, (WPARAM)1, (LPARAM)0);
-	
-	//vox checkbox
-/*	cbx_doVox = CreateWindowW(L"Button", L"VOX Tone", WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX, dispImgSize.X + 15, 140, 100, 20, parent, (HMENU)ID_DOVOX, NULL, NULL);
-	SendMessage(cbx_doVox, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
-	SendMessage(cbx_doVox, BM_SETCHECK, BST_CHECKED, 0); */
 }
 
 void drawRect(SSTV::vec2 p1, int width, int height) {

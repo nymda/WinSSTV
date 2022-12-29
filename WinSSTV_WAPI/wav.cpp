@@ -380,7 +380,6 @@ namespace wav {
             //if its done then quit out of the loop
             if (wavPlaybackSample >= writeIndex) {
                 finished = true;
-                reporter->playedPercent = 1000;
                 break;
             }
             
@@ -388,8 +387,10 @@ namespace wav {
             audioRenderClient->ReleaseBuffer(numFramesToWrite, 0);
         }
 
-        reporter->running = false;
+        reporter->playedPercent = 1000;
+        Sleep(500); //wait for the gui to update to 1000 to totally fill the bar
 
+        reporter->running = false;
         audioClient->Stop();
         audioClient->Release();
         audioRenderClient->Release();
