@@ -353,9 +353,9 @@ namespace wav {
 				//squirt the audio data from the wav file into the playback buffer
                 *buffer++ = ((short*)wavheap)[wavPlaybackSample];
                 
-                int playbackMS = (wavPlaybackSample / header.sampleRate) * 1000;
-                
-				if (playbackMS % 100 == 0) { //report progress every 100ms
+                float playbackMS = ((float)wavPlaybackSample / (float)header.sampleRate) * 1000.f;
+
+				if ((int)playbackMS % 100 == 0) { //report progress every 100ms
                     if (reporter->abort) {
                         reporter->running = false;
                         return;
@@ -363,13 +363,13 @@ namespace wav {
                     
                     int percentage = ceil((float)wavPlaybackSample / (float)writeIndex * 1000.f);
 
-                    SSTV::vec2 progressTime = { playbackMS / 60000, ((playbackMS % 60000) / 1000) };
-                    SSTV::vec2 totalTime = { (int)actualDurationMS / 60000, ((int)actualDurationMS % 60000) / 1000 };
-                    
-					reporter->currentMin = progressTime.X;
-					reporter->currentSec = progressTime.Y;
-					reporter->totalMin = totalTime.X;
-					reporter->totalSec = totalTime.Y;
+					reporter->currentMin = ((int)playbackMS / 1000) / 60;
+					reporter->currentSec = ((int)playbackMS / 1000) % 60;
+                    reporter->currentMs =  ((int)playbackMS % 1000);
+                    reporter->totalMin =   ((int)actualDurationMS / 1000) / 60;
+                    reporter->totalSec =   ((int)actualDurationMS / 1000) % 60;
+                    reporter->totalMs =    ((int)actualDurationMS % 1000);
+
 					reporter->playedPercent = percentage;
 				}
               
@@ -387,7 +387,9 @@ namespace wav {
             audioRenderClient->ReleaseBuffer(numFramesToWrite, 0);
         }
 
+        //set played percentage to full
         reporter->playedPercent = 1000;
+
         Sleep(500); //wait for the gui to update to 1000 to totally fill the bar
 
         reporter->running = false;

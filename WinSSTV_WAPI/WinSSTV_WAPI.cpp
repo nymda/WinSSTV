@@ -142,7 +142,6 @@ void createConsole() {
 	freopen_s(&f, "CONIN$", "r", stdin);
 }
 
-
 wav::playbackReporter pr = {};
 
 VOID CALLBACK timerCallback(HWND hwnd, UINT message, UINT idTimer, DWORD dwTime)
@@ -151,8 +150,13 @@ VOID CALLBACK timerCallback(HWND hwnd, UINT message, UINT idTimer, DWORD dwTime)
 		return;
 	}
 
-	printf_s("Percent: %i, (%i:%i) / (%i:%i)\n", pr.playedPercent, pr.currentMin, pr.currentSec, pr.totalMin, pr.totalSec);
+	//update the progress bar
 	SendMessage(pbr_playbackBar, PBM_SETPOS, (WPARAM)pr.playedPercent, (LPARAM)0);
+
+	//update the label
+	wchar_t timeTxt[100];
+	swprintf_s(timeTxt, 100, L"%02d:%02d:%02d / %02d:%02d:%02d", pr.currentMin, pr.currentSec, pr.currentMs / 10, pr.totalMin, pr.totalSec, ((pr.totalMs / 100) * 100) / 10);
+	SetWindowText(lbl_playbackTime, timeTxt);
 }
 
 
@@ -444,7 +448,7 @@ void initUI(HWND parent) {
 	SendMessage(btn_play, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//playback time label
-	lbl_playbackTime = CreateWindowW(L"Static", L"00:00 / 00:00", WS_VISIBLE | WS_CHILD, 5, 277, 250, 15, parent, (HMENU)(ID_PLAYBACKBAR & 0xFF), NULL, NULL);
+	lbl_playbackTime = CreateWindowW(L"Static", L"00:00:000 / 00:00:000", WS_VISIBLE | WS_CHILD, 5, 277, 250, 15, parent, (HMENU)(ID_PLAYBACKBAR & 0xFF), NULL, NULL);
 	SendMessage(lbl_playbackTime, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//playback bar | todo: make this look better than just a normal progress bar

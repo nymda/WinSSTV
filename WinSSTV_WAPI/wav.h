@@ -63,8 +63,10 @@ namespace wav {
     struct playbackReporter {
         int currentMin;
         int currentSec;
+        int currentMs;
         int totalMin;
         int totalSec;
+        int totalMs;
         int playedPercent;
         bool running;
         bool abort;
