@@ -158,15 +158,18 @@ int rsCountdown = 0;
 VOID CALLBACK timerCallback(HWND hwnd, UINT message, UINT idTimer, DWORD dwTime)
 {
 	if (!pr.running && pr.playedPercent > 0) {
-		pr = {};
+		pr = {}; //reset pr
 	}
+
+	int iVol = SendMessage((HWND)pbr_volBar, (UINT)TBM_GETPOS, (WPARAM)0, (LPARAM)0);
+	pr.volume = (float)((float)iVol / 100.f);
 
 	//RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_NOFRAME | RDW_NOINTERNALPAINT);
 	SendMessage(pbr_playbackBar, TBM_SETPOS, (WPARAM)1, (LPARAM)pr.playedPercent);
 
 	//update the label
 	wchar_t timeTxt[100];
-	swprintf_s(timeTxt, 100, L"%02d:%02d:%02d / %02d:%02d:%02d", pr.currentMin, pr.currentSec, pr.currentMs / 100, pr.totalMin, pr.totalSec, pr.totalMs / 100);
+	swprintf_s(timeTxt, 100, L"%02d:%02d:%02d / %02d:%02d:%02d", pr.currentMin, pr.currentSec, (pr.currentMs / 100) * 10, pr.totalMin, pr.totalSec, (pr.totalMs / 100) * 10);
 
 	if (pr.playedPercent == 100) {
 		rsCountdown++;
@@ -464,8 +467,8 @@ void initUI(HWND parent) {
 	SendMessage(btn_play, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//playback time label
-	lbl_playbackTime = CreateWindowW(L"Static", L"00:00:00 / 00:00:00", WS_VISIBLE | WS_CHILD, 5, 290 + 3, 100, 15, parent, (HMENU)(ID_PLAYBACKBAR & 0xFF), NULL, NULL);
-	SendMessage(lbl_playbackTime, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+	lbl_playbackTime = CreateWindowW(L"Static", L"00:00:00 / 00:00:00", WS_VISIBLE | WS_CHILD, 5, 280 + 3, 200, 15, parent, (HMENU)(ID_PLAYBACKBAR & 0xFF), NULL, NULL);
+	//SendMessage(lbl_playbackTime, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	pbr_playbackBar = CreateWindowW(L"msctls_trackbar32", L"", WS_VISIBLE | WS_CHILD | WS_DISABLED, 4, 250, 586, 25, parent, (HMENU)ID_PLAYBACKBAR, NULL, NULL);
 	SendMessage(pbr_playbackBar, TBM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(0, 1000));
@@ -477,7 +480,7 @@ void initUI(HWND parent) {
 	SendMessage(pbr_volBar, TBM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(0, 100));
 	SendMessage(pbr_volBar, TBM_SETPOS, (WPARAM)1, (LPARAM)(100));
 
-	lbl_volBar = CreateWindowW(L"Static", L"Volume (100%):", WS_VISIBLE | WS_CHILD, 305, 280 + 3, 80, 25, parent, (HMENU)(ID_VOLUMEBAR & 0xFF), NULL, NULL);
+	lbl_volBar = CreateWindowW(L"Static", L"Volume (100%):", WS_VISIBLE | WS_CHILD, 310, 280 + 3, 75, 15, parent, (HMENU)(ID_VOLUMEBAR & 0xFF), NULL, NULL);
 	SendMessage(lbl_volBar, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 }
