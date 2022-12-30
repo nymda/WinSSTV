@@ -80,6 +80,9 @@ HWND pbr_volBar = 0;
 HWND lbl_volBar = 0;
 #define ID_VOLUMEBAR 11
 
+HWND btn_save = 0;
+#define ID_SAVE 12
+
 // Forward declarations of functions included in this code module:
 ATOM registerClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
@@ -187,7 +190,7 @@ DWORD WINAPI beginPlaybackThreaded(LPVOID lpParameter)
 	return 0;
 }
 
-void beginEncode() {
+void beginEncode(bool playAudio) {
 
 	if (pr.running) { return; }
 
@@ -213,10 +216,9 @@ void beginEncode() {
 	printf_s(" Actual time  : %f MS\n", wav::actualDurationMS);
 	printf_s(" Added: %i, Skipped: %i\n", wav::balance_AddedSamples, wav::balance_SkippedSamples);
 
-	bool complete = false;
-	bool abort = false;
-
-	HANDLE thread = CreateThread(NULL, 0, beginPlaybackThreaded, NULL, 0, NULL);
+	if (playAudio) {
+		HANDLE thread = CreateThread(NULL, 0, beginPlaybackThreaded, NULL, 0, NULL);
+	}
 }
 
 void updateFromRGBArray(SSTV::rgb* data, SSTV::vec2 size) {
@@ -313,6 +315,55 @@ bool loadImageFile() {
 	return false;
 }
 
+bool saveWavFile () {
+	OPENFILENAME ofn = { 0 };
+	TCHAR szFile[260] = { 0 };
+
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = hWnd;
+	ofn.lpstrFile = szFile;
+	ofn.nMaxFile = sizeof(szFile);
+	ofn.lpstrFilter = (L"Waveform Audio File Format (*.wav)\0*.wav\0");
+	ofn.nFilterIndex = 1;
+	ofn.lpstrFileTitle = NULL;
+	ofn.nMaxFileTitle = 0;
+	ofn.lpstrInitialDir = NULL;
+	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+	ofn.lpstrDefExt = L"wav";
+
+	if (GetSaveFileName(&ofn) == TRUE && ofn.lpstrFile)
+	{
+		FILE* ofptr = 0;
+		int openErrNo = _wfopen_s(&ofptr, ofn.lpstrFile, L"wb");
+		if (openErrNo != 0 || !ofptr) {
+			char errBuffer[256] = {};
+			strerror_s(errBuffer, openErrNo);
+			printf_s("[ERR] Could not open output file (%s)\n", errBuffer);
+			return 0;
+		}
+
+		beginEncode(false);
+
+		if (wav::save(ofptr) <= 0) {
+			char errBuffer[256] = {};
+			strerror_s(errBuffer, errno);
+			printf_s("[ERR] Issue writing to output file (%s)\n", errBuffer);
+			fclose(ofptr);
+			return 0;
+		}
+
+		fclose(ofptr);
+		
+		wchar_t saveTxt[100];
+		swprintf_s(saveTxt, 100, L"Exported audio as %s", ofn.lpstrFile);
+
+		MessageBox(NULL, saveTxt, L"Saved", MB_OK);
+
+		return true;
+	}
+	return false;
+}
+
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
 	UNREFERENCED_PARAMETER(hPrevInstance);
@@ -370,7 +421,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
 	hInst = hInstance; // Store instance handle in our global variable
 
-	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX, CW_USEDEFAULT, 0, 610, 349, nullptr, nullptr, hInstance, nullptr);
+	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_SIZEBOX, CW_USEDEFAULT, 0, 610, 344, nullptr, nullptr, hInstance, nullptr);
 
 	if (!hWnd)
 	{
@@ -463,26 +514,28 @@ void initUI(HWND parent) {
 	SendMessage(cmb_pbDevice, CB_SETCURSEL, (WPARAM)0, (LPARAM)wasapiPackage->defaultDevice);
 
 	//play button
-	btn_play = CreateWindowW(L"Button", L"PLAY", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 15, 217, 250, 25, parent, (HMENU)ID_PLAY, NULL, NULL);
+	btn_play = CreateWindowW(L"Button", L"PLAY", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 15, 217, 175, 25, parent, (HMENU)ID_PLAY, NULL, NULL);
 	SendMessage(btn_play, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
-	//playback time label
-	lbl_playbackTime = CreateWindowW(L"Static", L"00:00:00 / 00:00:00", WS_VISIBLE | WS_CHILD, 5, 280 + 3, 200, 15, parent, (HMENU)(ID_PLAYBACKBAR & 0xFF), NULL, NULL);
-	//SendMessage(lbl_playbackTime, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+	//save button
+	btn_save = CreateWindowW(L"Button", L"SAVE", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 194, 217, 71, 25, parent, (HMENU)ID_SAVE, NULL, NULL);
+	SendMessage(btn_save, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
-	pbr_playbackBar = CreateWindowW(L"msctls_trackbar32", L"", WS_VISIBLE | WS_CHILD | WS_DISABLED, 4, 250, 586, 25, parent, (HMENU)ID_PLAYBACKBAR, NULL, NULL);
+	//playback time label
+	lbl_playbackTime = CreateWindowW(L"Static", L"00:00:00 / 00:00:00", WS_VISIBLE | WS_CHILD, 5, 280 + 5, 200, 15, parent, (HMENU)(ID_PLAYBACKBAR & 0xFF), NULL, NULL);
+
+	pbr_playbackBar = CreateWindowW(L"msctls_trackbar32", L"", WS_VISIBLE | WS_CHILD | WS_DISABLED, 4, 250, 561, 25, parent, (HMENU)ID_PLAYBACKBAR, NULL, NULL);
 	SendMessage(pbr_playbackBar, TBM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(0, 1000));
 
-	btn_stopPlayback = CreateWindowW(L"Button", L"STOP", WS_VISIBLE | WS_CHILD | WS_BORDER, 540, 280, 50, 25, parent, (HMENU)ID_STOPPLAYBACK, NULL, NULL);
+	btn_stopPlayback = CreateWindowW(L"Button", L"\x25A0", WS_VISIBLE | WS_CHILD | WS_BORDER, 565, 250, 25, 25, parent, (HMENU)ID_STOPPLAYBACK, NULL, NULL);
 	SendMessage(btn_stopPlayback, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
-	pbr_volBar = CreateWindowW(L"msctls_trackbar32", L"", WS_VISIBLE | WS_CHILD, 385, 280, 150, 25, parent, (HMENU)ID_VOLUMEBAR, NULL, NULL);
+	pbr_volBar = CreateWindowW(L"msctls_trackbar32", L"", WS_VISIBLE | WS_CHILD, 440, 280, 150, 25, parent, (HMENU)ID_VOLUMEBAR, NULL, NULL);
 	SendMessage(pbr_volBar, TBM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(0, 100));
 	SendMessage(pbr_volBar, TBM_SETPOS, (WPARAM)1, (LPARAM)(100));
 
-	lbl_volBar = CreateWindowW(L"Static", L"Volume (100%):", WS_VISIBLE | WS_CHILD, 310, 280 + 3, 75, 15, parent, (HMENU)(ID_VOLUMEBAR & 0xFF), NULL, NULL);
+	lbl_volBar = CreateWindowW(L"Static", L"Volume (100%):", WS_VISIBLE | WS_CHILD, 365, 280 + 3, 75, 15, parent, (HMENU)(ID_VOLUMEBAR & 0xFF), NULL, NULL);
 	SendMessage(lbl_volBar, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
-
 }
 
 void drawRect(SSTV::vec2 p1, int width, int height) {
@@ -631,7 +684,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			//open file button
 			if (LOWORD(wParam) == ID_PLAY) {
 				if (hasLoadedImage) {
-					beginEncode();
+					beginEncode(true);
+				}
+			}
+
+			if (LOWORD(wParam) == ID_SAVE) {
+				if (hasLoadedImage) {
+					saveWavFile();
 				}
 			}
 
