@@ -85,6 +85,7 @@ HWND btn_save = 0;
 
 HWND nud_fontSize = 0;
 #define ID_FONTSIZE 13
+int iFontSize = 1;
 
 // Forward declarations of functions included in this code module:
 ATOM registerClass(HINSTANCE hInstance);
@@ -555,13 +556,15 @@ wchar_t overlayWideBuffer[512] = L"";
 int overlayLen = 0;
 
 void reprocessImage() {
+	if (!hasLoadedImage) { return; }
+	
 	SSTV::resizeNN(&full, &resized);
 
 	tr::bindToCanvas(&resized);
 	tr::setTextOrigin({ 0, 0 });
 
 	if (overlayLen > 0) {
-		tr::drawString(tr::white, 1, overlayWideBuffer);
+		tr::drawString(tr::white, iFontSize, overlayWideBuffer);
 	}
 
 	if (rgbMode != SSTV::RGBMode::RGB) {
@@ -590,6 +593,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				swprintf_s(volTxt, 100, L"Volume (%03d%%):", iVol);
 				SetWindowText(lbl_volBar, volTxt);
 
+			}
+			break;
+		}
+
+		case WM_VSCROLL:
+		{
+			if (lParam == (LPARAM)nud_fontSize && hasLoadedImage) {
+				int tmp = LOWORD(SendMessage((HWND)nud_fontSize, (UINT)UDM_GETPOS, (WPARAM)0, (LPARAM)0));
+
+				if (tmp < 0) {
+					SendMessage((HWND)nud_fontSize, (UINT)UDM_SETPOS, (WPARAM)0, (LPARAM)0);
+				}
+				else if (tmp > 3) {
+					SendMessage((HWND)nud_fontSize, (UINT)UDM_SETPOS, (WPARAM)0, (LPARAM)3);
+				}
+				else {
+					iFontSize = tmp;
+					reprocessImage();
+					RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+				}
+				
 			}
 			break;
 		}
