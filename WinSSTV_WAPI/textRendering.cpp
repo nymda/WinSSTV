@@ -115,14 +115,17 @@ namespace tr {
 		
 		//draw the required characters with 1px between them
 		for (int i = 0; i < wcslen(string); i++) {
-			if ((iOrigin.X + offset + (CHARX * fontSize)) > boundCanvasSize.X) {
-				return;
+			if ((iOrigin.X + offset + (CHARX * fontSize)) > boundCanvasSize.X || string[i] == L';') {
+				iOrigin.Y += 16 * fontSize;
+				drawSpacer(spacerWidth, { iOrigin.X, iOrigin.Y }, fontSize);
+				offset = spacerWidth * fontSize;
+
+				if (string[i] == L';') { continue; }
 			}
 			
 			offset += drawCharacter(colour, string[i], { iOrigin.X + offset, iOrigin.Y }, fontSize);
 			offset += drawSpacer(spacerWidth, { iOrigin.X + offset, iOrigin.Y }, fontSize);
 		}
-
 		iOrigin.Y += 16 * fontSize;
 	}
 	

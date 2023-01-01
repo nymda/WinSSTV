@@ -83,6 +83,9 @@ HWND lbl_volBar = 0;
 HWND btn_save = 0;
 #define ID_SAVE 12
 
+HWND nud_fontSize = 0;
+#define ID_FONTSIZE 13
+
 // Forward declarations of functions included in this code module:
 ATOM registerClass(HINSTANCE hInstance);
 BOOL InitInstance(HINSTANCE, int);
@@ -475,8 +478,10 @@ void initUI(HWND parent) {
 	SendMessage(lbl_overlay, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//overlay textbox
-	txt_overlay = CreateWindowW(L"Edit", L"", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 65, 65, 200, 20, parent, (HMENU)ID_OVERLAY, NULL, NULL);
+	txt_overlay = CreateWindowW(L"Edit", L"", WS_VISIBLE | WS_CHILD | WS_BORDER | WS_HSCROLL | ES_AUTOHSCROLL, dispImgSize.X + 65, 65, 180, 20, parent, (HMENU)ID_OVERLAY, NULL, NULL);
 	SendMessage(txt_overlay, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+	SendMessage(txt_overlay, EM_SETLIMITTEXT, (WPARAM)512, (LPARAM)0);
+	ShowScrollBar(txt_overlay, 0, false);
 
 	//RGB mode dropdown and info
 	lbl_rgbMode = CreateWindowW(L"Static", L"Colours:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 89 + 3, 50, 15, parent, (HMENU)(ID_RGBMODE & 0xFF), NULL, NULL);
@@ -536,13 +541,17 @@ void initUI(HWND parent) {
 
 	lbl_volBar = CreateWindowW(L"Static", L"Volume (100%):", WS_VISIBLE | WS_CHILD, 365, 280 + 3, 75, 15, parent, (HMENU)(ID_VOLUMEBAR & 0xFF), NULL, NULL);
 	SendMessage(lbl_volBar, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+
+	//numeric up/down for setting the font size
+	nud_fontSize = CreateWindowW(L"msctls_updown32", L"Font size", WS_VISIBLE | WS_CHILD | UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_NOTHOUSANDS, dispImgSize.X + 248, 65, 180, 20, parent, (HMENU)ID_FONTSIZE, NULL, NULL);
+	SendMessage(nud_fontSize, UDM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(100, 1));
 }
 
 void drawRect(SSTV::vec2 p1, int width, int height) {
 	Rectangle(hdc, p1.X, p1.Y, p1.X + width, p1.Y + height);
 }
 
-wchar_t overlayWideBuffer[128] = L"";
+wchar_t overlayWideBuffer[512] = L"";
 int overlayLen = 0;
 
 void reprocessImage() {
@@ -633,7 +642,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			//overlay text changed
 			if (HIWORD(wParam) == EN_CHANGE && LOWORD(wParam) == ID_OVERLAY) {
 				if (hasLoadedImage) {
-					overlayLen = GetWindowTextW(txt_overlay, (LPWSTR)&overlayWideBuffer, 128);
+					overlayLen = GetWindowTextW(txt_overlay, (LPWSTR)&overlayWideBuffer, 512);
 
 					//clear if the delete character is inserted with ctrl-backspace
 					if (overlayWideBuffer[overlayLen - 1] == 127) {
