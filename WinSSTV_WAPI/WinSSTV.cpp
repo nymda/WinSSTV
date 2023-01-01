@@ -545,7 +545,8 @@ void initUI(HWND parent) {
 
 	//numeric up/down for setting the font size
 	nud_fontSize = CreateWindowW(L"msctls_updown32", L"Font size", WS_VISIBLE | WS_CHILD | UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_NOTHOUSANDS, dispImgSize.X + 248, 65, 180, 20, parent, (HMENU)ID_FONTSIZE, NULL, NULL);
-	SendMessage(nud_fontSize, UDM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(100, 1));
+	SendMessage(nud_fontSize, UDM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(3, 1));
+	
 }
 
 void drawRect(SSTV::vec2 p1, int width, int height) {
@@ -600,20 +601,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case WM_VSCROLL:
 		{
 			if (lParam == (LPARAM)nud_fontSize && hasLoadedImage) {
-				int tmp = LOWORD(SendMessage((HWND)nud_fontSize, (UINT)UDM_GETPOS, (WPARAM)0, (LPARAM)0));
-
-				if (tmp < 0) {
-					SendMessage((HWND)nud_fontSize, (UINT)UDM_SETPOS, (WPARAM)0, (LPARAM)0);
-				}
-				else if (tmp > 3) {
-					SendMessage((HWND)nud_fontSize, (UINT)UDM_SETPOS, (WPARAM)0, (LPARAM)3);
-				}
-				else {
-					iFontSize = tmp;
-					reprocessImage();
-					RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
-				}
-				
+				iFontSize = LOWORD(SendMessage((HWND)nud_fontSize, (UINT)UDM_GETPOS, (WPARAM)0, (LPARAM)0));
+				reprocessImage();
+				RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
 			}
 			break;
 		}
