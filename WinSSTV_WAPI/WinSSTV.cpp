@@ -451,7 +451,7 @@ void initUI(HWND parent) {
 	defFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
 
 	//open file button
-	btn_openFile = CreateWindowW(L"Button", L"Open Image", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 10, 5, 100, 25, parent, (HMENU)ID_OPENFILE, NULL, NULL);
+	btn_openFile = CreateWindowW(L"Button", L"Open Image", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 10, 5, 260, 25, parent, (HMENU)ID_OPENFILE, NULL, NULL);
 	SendMessage(btn_openFile, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//encode method label
