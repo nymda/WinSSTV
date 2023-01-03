@@ -1,5 +1,5 @@
 /*
- * This file is part of CLSSTV (https://github.com/nymda/CLSSTV).
+ * This file is part of WinSSTV (https://github.com/nymda/WinSSTV).
  * Copyright (c) 2022 github/nymda
  *
  * This program is free software: you can redistribute it and/or modify
@@ -84,7 +84,10 @@ namespace tr {
 	int drawSpacer(int width, SSTV::vec2 pos, int fontSize) {
 		for (int y = 0; y < CHARY * fontSize; y++) {
 			for (int x = 0; x < width * fontSize; x++) {
-				boundCanvas[((pos.Y + y) * boundCanvasSize.X) + (pos.X + x)] = { 0, 0, 0 };
+				int drawIndex = ((pos.Y + y) * boundCanvasSize.X) + (pos.X + x);
+				if (drawIndex <= (boundCanvasSize.X * boundCanvasSize.Y) && drawIndex >= 0) {
+					boundCanvas[drawIndex] = black;
+				}
 			}
 		}
 		return width * fontSize;
@@ -108,17 +111,15 @@ namespace tr {
 
 		//width of the spaces between characters in subpixels
 		int spacerWidth = 2;
-	
+		
 		//draw the background rectangle	
-		drawSpacer(spacerWidth, { iOrigin.X, iOrigin.Y }, fontSize);
-		offset += spacerWidth * fontSize;
+		offset += drawSpacer(spacerWidth, { iOrigin.X, iOrigin.Y }, fontSize);
 		
 		//draw the required characters with 1px between them
 		for (int i = 0; i < wcslen(string); i++) {
 			if ((iOrigin.X + offset + (CHARX * fontSize)) > boundCanvasSize.X || string[i] == L';') {
 				iOrigin.Y += 16 * fontSize;
-				drawSpacer(spacerWidth, { iOrigin.X, iOrigin.Y }, fontSize);
-				offset = spacerWidth * fontSize;
+				offset = drawSpacer(spacerWidth, { iOrigin.X, iOrigin.Y }, fontSize);
 
 				if (string[i] == L';') { continue; }
 			}

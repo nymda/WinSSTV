@@ -1,3 +1,20 @@
+/*
+* This file is part of WinSSTV (https://github.com/nymda/WinSSTV).
+* Copyright (c) 2022 github/nymda
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, version 3.
+*
+* This program is distributed in the hope that it will be useful, but
+* WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+* General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <iostream>
 #include <dinput.h>
 #include <tchar.h>
@@ -586,7 +603,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		case WM_HSCROLL:
 		{
-			if (lParam == (LPARAM)pbr_volBar) {
+			if (lParam == (LPARAM)pbr_volBar) { //volume bar control
 				int iVol = SendMessage((HWND)pbr_volBar, (UINT)TBM_GETPOS, (WPARAM)0, (LPARAM)0);
 				pr.volume = (float)((float)iVol / 100.f);
 
@@ -600,7 +617,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		case WM_VSCROLL:
 		{
-			if (lParam == (LPARAM)nud_fontSize && hasLoadedImage) {
+			if (lParam == (LPARAM)nud_fontSize && hasLoadedImage) { //font size numeric up/down control
 				iFontSize = LOWORD(SendMessage((HWND)nud_fontSize, (UINT)UDM_GETPOS, (WPARAM)0, (LPARAM)0));
 				reprocessImage();
 				RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
@@ -608,7 +625,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		}
 
-		case WM_NOTIFY: //makes the trackbar tick always blue, allowing for it to be disabled to ignore user input
+		case WM_NOTIFY: 
 		{
 			if (((LPNMHDR)lParam)->code == NM_CUSTOMDRAW) {
 				LPNMCUSTOMDRAW lpNMCD = (LPNMCUSTOMDRAW)lParam;
@@ -618,11 +635,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					return CDRF_NOTIFYITEMDRAW;
 				}
 				else if (lpNMCD->dwDrawStage == CDDS_ITEMPREPAINT && lpNMCD->dwItemSpec == TBCD_THUMB) {
-					if (wParam == ID_PLAYBACKBAR) {
+					if (wParam == ID_PLAYBACKBAR) { //recolours the trackbar tick of the playback bar
 						SelectObject(lpNMCD->hdc, CreatePen(0, 1, RGB(100, 0, 0)));
 						SelectObject(lpNMCD->hdc, CreateSolidBrush(RGB(100, 0, 0)));
 					}
-					else {
+					else { //recolours the trackbar tick of the volume bar (and any other bars but we'll deal with that later)
 						SelectObject(lpNMCD->hdc, CreatePen(0, 1, RGB(0, 120, 215)));
 						SelectObject(lpNMCD->hdc, CreateSolidBrush(RGB(0, 120, 215)));
 					}
@@ -711,12 +728,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 			}
 
+			//save wav button
 			if (LOWORD(wParam) == ID_SAVE) {
 				if (hasLoadedImage) {
 					saveWavFile();
 				}
 			}
 
+			//stop button
 			if (LOWORD(wParam) == ID_STOPPLAYBACK) {
 				if (pr.running) {
 					pr.abort = true;
