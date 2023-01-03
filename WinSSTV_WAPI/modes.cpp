@@ -26,7 +26,7 @@
 #include "AVT.h" //AVT90
 #include "MRX.h" //MR73, MR90, MR115, MR140, MR175
 
-encMode BW8 =   { EM_BW8,   L"BW8",   L"Monochrome 8s",   {160, 120}, (encCall)&encodeBW8,    {(char )0x82}  };
+encMode BW8 =   { EM_BW8,   L"BW8",   L"Monochrome 8s",   {160, 120}, (encCall)&encodeBW8,    {(char )0x82}   };
 encMode BW12 =  { EM_BW12,  L"BW12",  L"Monochrome 12s",  {160, 120}, (encCall)&encodeBW12,   {(char )0x86}   };
 encMode R24 =   { EM_R24,   L"R24",   L"Robot24",         {160, 120}, (encCall)&encodeR24,    {(char )0x84}   };
 encMode R36 =   { EM_R36,   L"R36",   L"Robot36",         {320, 240}, (encCall)&encodeR36,    {(char )0x88}   };
