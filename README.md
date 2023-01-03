@@ -1,6 +1,7 @@
 # WinSSTV
 
 WinSSTV: A "modern" SSTV audio encoder written in C++  
+No major dependencies; uses WinAPI, WASAPI and stb_image  
 
 features:  
 -direct playback of generated signal  
