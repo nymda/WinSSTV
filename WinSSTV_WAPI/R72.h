@@ -21,7 +21,7 @@
 #include "modes.h"
 
 void encodeR72(SSTV::rgb * rgbBuffer) {
-    SSTV::addVisCode(0x0C);
+    SSTV::addVisCode(R72.vis.visC);
 
     int img_width = R72.size.X;
     int img_height = R72.size.Y;

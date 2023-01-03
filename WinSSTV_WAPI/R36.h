@@ -21,7 +21,7 @@
 #include "modes.h"
 
 void encodeR36(SSTV::rgb* rgbBuffer) {
-    SSTV::addVisCode(0x88);
+    SSTV::addVisCode(R36.vis.visC);
 
     int img_width = R36.size.X;
     int img_height = R36.size.Y;

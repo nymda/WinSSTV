@@ -46,12 +46,18 @@ enum encModeID {
 	EM_PD290
 };
 
+union visCode {
+	char visC;
+	short visS;
+};
+
 struct encMode {
 	encModeID ID;
 	wchar_t code[8];
 	wchar_t desc[128];
 	SSTV::vec2 size;
 	encCall ec;
+	visCode vis;
 };
 
 extern encMode BW8;

@@ -53,11 +53,11 @@ void encodeMA(SSTV::rgb* rgbBuffer, double lineMS) {
 }
 
 void encodeMA1(SSTV::rgb* rgbBuffer) {
-    SSTV::addVisCode(0xAC);
+    SSTV::addVisCode(MR1.vis.visC);
     encodeMA(rgbBuffer, 146.432f);
 }
 
 void encodeMA2(SSTV::rgb* rgbBuffer) {
-    SSTV::addVisCode(0x28);
+    SSTV::addVisCode(MR2.vis.visC);
     encodeMA(rgbBuffer, 73.216f);
 }

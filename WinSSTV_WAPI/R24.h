@@ -23,7 +23,7 @@
 //R24 feels like a missed opportunity, it could have been much faster using the R36 style colouring of sending Y and U on alternating lines
 
 void encodeR24(SSTV::rgb* rgbBuffer) {
-    SSTV::addVisCode(0x84);
+    SSTV::addVisCode(R24.vis.visC);
 
     int img_width = R24.size.X;
     int img_height = R24.size.Y;
