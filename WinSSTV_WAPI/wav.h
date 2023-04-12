@@ -23,6 +23,11 @@
 
 namespace wav {
 
+    struct wavDistortions {
+        float noiseLvl = 0;
+        int timingOffset = 0;
+    };
+
     enum generatorType {
         GT_SINE = 0,
         GT_SQUARE = 1,
@@ -79,6 +84,7 @@ namespace wav {
     void beginPlayback(int iDeviceID, playbackReporter* reporter);
     wasapiDevicePkg* WASAPIGetDevices();
     
+    extern wavDistortions* distortions;
     extern wavHeader header;
     extern double expectedDurationMS;
     extern double actualDurationMS;

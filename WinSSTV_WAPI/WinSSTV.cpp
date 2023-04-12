@@ -28,6 +28,7 @@
 #include "wav.h"
 #include "SSTV.h"
 #include "textRendering.h"
+#include "distortions.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -54,6 +55,7 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 //HWNDs
 HWND hWnd = 0;
+HWND distortionsHWND = 0;
 
 HWND btn_openFile = 0;
 #define ID_OPENFILE 1
@@ -103,6 +105,9 @@ HWND btn_save = 0;
 HWND nud_fontSize = 0;
 #define ID_FONTSIZE 13
 int iFontSize = 1;
+
+HWND btn_distortions = 0;
+#define ID_DISTORTIONS 14
 
 // Forward declarations of functions included in this code module:
 ATOM registerClass(HINSTANCE hInstance);
@@ -186,7 +191,7 @@ VOID CALLBACK timerCallback(HWND hwnd, UINT message, UINT idTimer, DWORD dwTime)
 	}
 
 	int iVol = SendMessage((HWND)pbr_volBar, (UINT)TBM_GETPOS, (WPARAM)0, (LPARAM)0);
-	pr.volume = (float)((float)iVol / 100.f);
+	pr.volume = ((float)iVol / 100.f);
 
 	//RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_NOFRAME | RDW_NOINTERNALPAINT);
 	SendMessage(pbr_playbackBar, TBM_SETPOS, (WPARAM)1, (LPARAM)pr.playedPercent);
@@ -390,7 +395,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
-	// Initialize global strings
+	// Initialize global strings	
 	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
 	LoadStringW(hInstance, IDC_WINSSTVWAPI, szWindowClass, MAX_LOADSTRING);
 	registerClass(hInstance);
@@ -403,6 +408,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
 	HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WINSSTVWAPI));
 	MSG msg;
+
+	distortionsHWND = createDistortionsWnd(hInstance, wav::distortions);
 
 	// Main message loop:
 	while (GetMessage(&msg, nullptr, 0, 0))
@@ -451,9 +458,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
-
+	
 	return TRUE;
 }
+
 
 void initUI(HWND parent) {
 
@@ -468,8 +476,7 @@ void initUI(HWND parent) {
 	*/
 
 	//font setup
-	HFONT defFont;
-	defFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+	HFONT defFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
 
 	//open file button
 	btn_openFile = CreateWindowW(L"Button", L"Open Image", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 10, 5, 260, 25, parent, (HMENU)ID_OPENFILE, NULL, NULL);
@@ -563,6 +570,10 @@ void initUI(HWND parent) {
 	//numeric up/down for setting the font size
 	nud_fontSize = CreateWindowW(L"msctls_updown32", L"Font size", WS_VISIBLE | WS_CHILD | UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_NOTHOUSANDS, dispImgSize.X + 248, 65, 180, 20, parent, (HMENU)ID_FONTSIZE, NULL, NULL);
 	SendMessage(nud_fontSize, UDM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(3, 1));
+	
+	//distortions button
+	btn_distortions = CreateWindowW(L"Button", L"Distortions", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 194, 165, 71, 25, parent, (HMENU)ID_DISTORTIONS, NULL, NULL);
+	SendMessage(btn_distortions, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 	
 }
 
@@ -740,6 +751,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				if (pr.running) {
 					pr.abort = true;
 				}
+			}
+
+			//distortions button
+			if (LOWORD(wParam) == ID_DISTORTIONS) {
+				distortionsHWND = createDistortionsWnd(hInst, wav::distortions);
+				ShowWindow(distortionsHWND, SW_SHOWDEFAULT);
 			}
 
 			break;

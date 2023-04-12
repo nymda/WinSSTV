@@ -31,6 +31,7 @@ namespace wav {
     const float pi = 3.1415926535;
 	double angle = 0.0;
 
+	wavDistortions* distortions = new wavDistortions();
 	wavHeader header = {};
     void* wavheap = 0;
 
@@ -43,6 +44,7 @@ namespace wav {
 
     int init(int sampleRate) {
         if (wavheap) { free(wavheap); }
+        
         expectedDurationMS = 0;
         actualDurationMS = 0;
         balance_AddedSamples = 0;
@@ -64,17 +66,20 @@ namespace wav {
 
 	//add a tone to the wav file, duration in MS
     void addTone(short frequency, float duration, generatorType gt) {
+        //timing distortion
+		int sampleRateDistorted = header.sampleRate + distortions->timingOffset;
+        
         //number of samples required for the requested duration. sometimes.
-        int sampleCount = round((header.sampleRate) * (duration / 1000.f));
+        int sampleCount = round((sampleRateDistorted) * (duration / 1000.f));
 
         //balancing
         expectedDurationMS += duration;
-        actualDurationMS += (sampleCount / static_cast<double>(header.sampleRate)) * 1000;
-        float msPerSample = 1000.f / header.sampleRate;
+        actualDurationMS += (sampleCount / static_cast<double>(sampleRateDistorted)) * 1000;
+        float msPerSample = 1000.f / sampleRateDistorted;
 
         //if you're gonna run out of space in the wav then add more in 15 second chunks.
         while (bytesWritten + (sampleCount * sizeof(short)) > header.dataSize) {
-            header.dataSize += (header.sampleRate * 15) * sizeof(short);
+            header.dataSize += (sampleRateDistorted * 15) * sizeof(short);
             header.fileSize = header.dataSize + sizeof(wavHeader);
             void* reallocated = realloc(wavheap, header.fileSize);
             if (reallocated) { wavheap = reallocated; }
@@ -89,19 +94,24 @@ namespace wav {
         for (int i = 0; i < sampleCount; i++) {
             bytesWritten += (int)sizeof(short);
 
+            //noise disortion
+            int noiseFactor = (int)(distortions->noiseLvl * ampl);
+            int noisePointAddition = 0;
+            if (noiseFactor > 0) { noisePointAddition = (rand() % noiseFactor) - (noiseFactor / 2); }
+            
             //calculates the actual waveform
             switch (gt) {
                 case GT_SINE:
-                    wavData[writeIndex].S = (short)(ampl * sin(angle));
+                    wavData[writeIndex].S = (short)(ampl * sin(angle)) + noisePointAddition;
                     break;
                 case GT_SQUARE:
-                    wavData[writeIndex].S = (short)(ampl * (sin(angle) > 0 ? 1 : -1));
+                    wavData[writeIndex].S = (short)(ampl * (sin(angle) > 0 ? 1 : -1)) + noisePointAddition;
                     break;
                 case GT_TRIANGLE:
-                    wavData[writeIndex].S = (short)(ampl * (2 / pi) * asin(sin(angle)));
+                    wavData[writeIndex].S = (short)(ampl * (2 / pi) * asin(sin(angle))) + noisePointAddition;
                     break;
             }
-            angle += ((2 * pi * frequency) / header.sampleRate);
+            angle += ((2 * pi * frequency) / sampleRateDistorted);
             writeIndex++;
 
             //balances issues with timing. see note at the bottom.
