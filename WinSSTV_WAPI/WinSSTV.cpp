@@ -569,8 +569,10 @@ void initUI(HWND parent) {
 
 	//numeric up/down for setting the font size
 	nud_fontSize = CreateWindowW(L"msctls_updown32", L"Font size", WS_VISIBLE | WS_CHILD | UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_NOTHOUSANDS, dispImgSize.X + 248, 65, 180, 20, parent, (HMENU)ID_FONTSIZE, NULL, NULL);
-	SendMessage(nud_fontSize, UDM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(12, 1));
-	
+	SendMessage(nud_fontSize, UDM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(24, 1));
+	SendMessage(nud_fontSize, UDM_SETPOS, (WPARAM)0, (LPARAM)4);
+	iFontSize = LOWORD(SendMessage((HWND)nud_fontSize, (UINT)UDM_GETPOS, (WPARAM)0, (LPARAM)0));
+
 	//distortions button
 	btn_distortions = CreateWindowW(L"Button", L"Distortions", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 194, 165, 71, 25, parent, (HMENU)ID_DISTORTIONS, NULL, NULL);
 	SendMessage(btn_distortions, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
