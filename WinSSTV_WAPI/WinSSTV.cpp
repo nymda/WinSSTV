@@ -1,3 +1,20 @@
+/*
+* This file is part of WinSSTV (https://github.com/nymda/WinSSTV).
+* Copyright (c) 2022 github/nymda
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, version 3.
+*
+* This program is distributed in the hope that it will be useful, but
+* WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+* General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <iostream>
 #include <dinput.h>
 #include <tchar.h>
@@ -11,6 +28,7 @@
 #include "wav.h"
 #include "SSTV.h"
 #include "textRendering.h"
+#include "distortions.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -37,6 +55,7 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 //HWNDs
 HWND hWnd = 0;
+HWND distortionsHWND = 0;
 
 HWND btn_openFile = 0;
 #define ID_OPENFILE 1
@@ -82,6 +101,13 @@ HWND lbl_volBar = 0;
 
 HWND btn_save = 0;
 #define ID_SAVE 12
+
+HWND nud_fontSize = 0;
+#define ID_FONTSIZE 13
+int iFontSize = 1;
+
+HWND btn_distortions = 0;
+#define ID_DISTORTIONS 14
 
 // Forward declarations of functions included in this code module:
 ATOM registerClass(HINSTANCE hInstance);
@@ -165,7 +191,7 @@ VOID CALLBACK timerCallback(HWND hwnd, UINT message, UINT idTimer, DWORD dwTime)
 	}
 
 	int iVol = SendMessage((HWND)pbr_volBar, (UINT)TBM_GETPOS, (WPARAM)0, (LPARAM)0);
-	pr.volume = (float)((float)iVol / 100.f);
+	pr.volume = ((float)iVol / 100.f);
 
 	//RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE | RDW_NOERASE | RDW_NOFRAME | RDW_NOINTERNALPAINT);
 	SendMessage(pbr_playbackBar, TBM_SETPOS, (WPARAM)1, (LPARAM)pr.playedPercent);
@@ -369,7 +395,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
-	// Initialize global strings
+	// Initialize global strings	
 	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
 	LoadStringW(hInstance, IDC_WINSSTVWAPI, szWindowClass, MAX_LOADSTRING);
 	registerClass(hInstance);
@@ -382,6 +408,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
 	HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_WINSSTVWAPI));
 	MSG msg;
+
+	distortionsHWND = createDistortionsWnd(hInstance, wav::distortions);
 
 	// Main message loop:
 	while (GetMessage(&msg, nullptr, 0, 0))
@@ -430,9 +458,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
-
+	
 	return TRUE;
 }
+
 
 void initUI(HWND parent) {
 
@@ -447,11 +476,10 @@ void initUI(HWND parent) {
 	*/
 
 	//font setup
-	HFONT defFont;
-	defFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+	HFONT defFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
 
 	//open file button
-	btn_openFile = CreateWindowW(L"Button", L"Open Image", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 10, 5, 100, 25, parent, (HMENU)ID_OPENFILE, NULL, NULL);
+	btn_openFile = CreateWindowW(L"Button", L"Open Image", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 10, 5, 260, 25, parent, (HMENU)ID_OPENFILE, NULL, NULL);
 	SendMessage(btn_openFile, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//encode method label
@@ -475,8 +503,10 @@ void initUI(HWND parent) {
 	SendMessage(lbl_overlay, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
 
 	//overlay textbox
-	txt_overlay = CreateWindowW(L"Edit", L"", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 65, 65, 200, 20, parent, (HMENU)ID_OVERLAY, NULL, NULL);
+	txt_overlay = CreateWindowW(L"Edit", L"", WS_VISIBLE | WS_CHILD | WS_BORDER | WS_HSCROLL | ES_AUTOHSCROLL, dispImgSize.X + 65, 65, 180, 20, parent, (HMENU)ID_OVERLAY, NULL, NULL);
 	SendMessage(txt_overlay, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+	SendMessage(txt_overlay, EM_SETLIMITTEXT, (WPARAM)512, (LPARAM)0);
+	ShowScrollBar(txt_overlay, 0, false);
 
 	//RGB mode dropdown and info
 	lbl_rgbMode = CreateWindowW(L"Static", L"Colours:", WS_VISIBLE | WS_CHILD, dispImgSize.X + 15, 89 + 3, 50, 15, parent, (HMENU)(ID_RGBMODE & 0xFF), NULL, NULL);
@@ -536,23 +566,34 @@ void initUI(HWND parent) {
 
 	lbl_volBar = CreateWindowW(L"Static", L"Volume (100%):", WS_VISIBLE | WS_CHILD, 365, 280 + 3, 75, 15, parent, (HMENU)(ID_VOLUMEBAR & 0xFF), NULL, NULL);
 	SendMessage(lbl_volBar, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+
+	//numeric up/down for setting the font size
+	nud_fontSize = CreateWindowW(L"msctls_updown32", L"Font size", WS_VISIBLE | WS_CHILD | UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_NOTHOUSANDS, dispImgSize.X + 248, 65, 180, 20, parent, (HMENU)ID_FONTSIZE, NULL, NULL);
+	SendMessage(nud_fontSize, UDM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(3, 1));
+	
+	//distortions button
+	btn_distortions = CreateWindowW(L"Button", L"Distortions", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 194, 165, 71, 25, parent, (HMENU)ID_DISTORTIONS, NULL, NULL);
+	SendMessage(btn_distortions, WM_SETFONT, (WPARAM)defFont, MAKELPARAM(TRUE, 0));
+	
 }
 
 void drawRect(SSTV::vec2 p1, int width, int height) {
 	Rectangle(hdc, p1.X, p1.Y, p1.X + width, p1.Y + height);
 }
 
-wchar_t overlayWideBuffer[128] = L"";
+wchar_t overlayWideBuffer[512] = L"";
 int overlayLen = 0;
 
 void reprocessImage() {
+	if (!hasLoadedImage) { return; }
+	
 	SSTV::resizeNN(&full, &resized);
 
 	tr::bindToCanvas(&resized);
 	tr::setTextOrigin({ 0, 0 });
 
 	if (overlayLen > 0) {
-		tr::drawString(tr::white, 1, overlayWideBuffer);
+		tr::drawString(tr::white, iFontSize, overlayWideBuffer);
 	}
 
 	if (rgbMode != SSTV::RGBMode::RGB) {
@@ -573,7 +614,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		case WM_HSCROLL:
 		{
-			if (lParam == (LPARAM)pbr_volBar) {
+			if (lParam == (LPARAM)pbr_volBar) { //volume bar control
 				int iVol = SendMessage((HWND)pbr_volBar, (UINT)TBM_GETPOS, (WPARAM)0, (LPARAM)0);
 				pr.volume = (float)((float)iVol / 100.f);
 
@@ -585,7 +626,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		}
 
-		case WM_NOTIFY: //makes the trackbar tick always blue, allowing for it to be disabled to ignore user input
+		case WM_VSCROLL:
+		{
+			if (lParam == (LPARAM)nud_fontSize && hasLoadedImage) { //font size numeric up/down control
+				iFontSize = LOWORD(SendMessage((HWND)nud_fontSize, (UINT)UDM_GETPOS, (WPARAM)0, (LPARAM)0));
+				reprocessImage();
+				RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+			}
+			break;
+		}
+
+		case WM_NOTIFY: 
 		{
 			if (((LPNMHDR)lParam)->code == NM_CUSTOMDRAW) {
 				LPNMCUSTOMDRAW lpNMCD = (LPNMCUSTOMDRAW)lParam;
@@ -595,11 +646,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					return CDRF_NOTIFYITEMDRAW;
 				}
 				else if (lpNMCD->dwDrawStage == CDDS_ITEMPREPAINT && lpNMCD->dwItemSpec == TBCD_THUMB) {
-					if (wParam == ID_PLAYBACKBAR) {
+					if (wParam == ID_PLAYBACKBAR) { //recolours the trackbar tick of the playback bar
 						SelectObject(lpNMCD->hdc, CreatePen(0, 1, RGB(100, 0, 0)));
 						SelectObject(lpNMCD->hdc, CreateSolidBrush(RGB(100, 0, 0)));
 					}
-					else {
+					else { //recolours the trackbar tick of the volume bar (and any other bars but we'll deal with that later)
 						SelectObject(lpNMCD->hdc, CreatePen(0, 1, RGB(0, 120, 215)));
 						SelectObject(lpNMCD->hdc, CreateSolidBrush(RGB(0, 120, 215)));
 					}
@@ -633,7 +684,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			//overlay text changed
 			if (HIWORD(wParam) == EN_CHANGE && LOWORD(wParam) == ID_OVERLAY) {
 				if (hasLoadedImage) {
-					overlayLen = GetWindowTextW(txt_overlay, (LPWSTR)&overlayWideBuffer, 128);
+					overlayLen = GetWindowTextW(txt_overlay, (LPWSTR)&overlayWideBuffer, 512);
 
 					//clear if the delete character is inserted with ctrl-backspace
 					if (overlayWideBuffer[overlayLen - 1] == 127) {
@@ -688,16 +739,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				}
 			}
 
+			//save wav button
 			if (LOWORD(wParam) == ID_SAVE) {
 				if (hasLoadedImage) {
 					saveWavFile();
 				}
 			}
 
+			//stop button
 			if (LOWORD(wParam) == ID_STOPPLAYBACK) {
 				if (pr.running) {
 					pr.abort = true;
 				}
+			}
+
+			//distortions button
+			if (LOWORD(wParam) == ID_DISTORTIONS) {
+				distortionsHWND = createDistortionsWnd(hInst, wav::distortions);
+				ShowWindow(distortionsHWND, SW_SHOWDEFAULT);
 			}
 
 			break;

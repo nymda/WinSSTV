@@ -1,5 +1,5 @@
 /*
- * This file is part of CLSSTV (https://github.com/nymda/CLSSTV).
+ * This file is part of WinSSTV (https://github.com/nymda/WinSSTV).
  * Copyright (c) 2022 github/nymda
  *
  * This program is free software: you can redistribute it and/or modify
@@ -22,6 +22,11 @@
 #define WAV_ENDPLAYBACK (WM_APP+1)
 
 namespace wav {
+
+    struct wavDistortions {
+        float noiseLvl = 0;
+        int timingOffset = 0;
+    };
 
     enum generatorType {
         GT_SINE = 0,
@@ -79,6 +84,7 @@ namespace wav {
     void beginPlayback(int iDeviceID, playbackReporter* reporter);
     wasapiDevicePkg* WASAPIGetDevices();
     
+    extern wavDistortions* distortions;
     extern wavHeader header;
     extern double expectedDurationMS;
     extern double actualDurationMS;

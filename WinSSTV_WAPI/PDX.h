@@ -1,5 +1,5 @@
 /*
- * This file is part of CLSSTV (https://github.com/nymda/CLSSTV).
+ * This file is part of WinSSTV (https://github.com/nymda/WinSSTV).
  * Copyright (c) 2022 github/nymda
  *
  * This program is free software: you can redistribute it and/or modify
@@ -60,36 +60,36 @@ void encodePD(SSTV::rgb* rgbBuffer, int img_width, int img_height, double lineMS
 }
 
 void encodePD50(SSTV::rgb* rgbBuffer) {
-    SSTV::addVisCode(0xDD);
+    SSTV::addVisCode(PD50.vis.visC);
     encodePD(rgbBuffer, PD50.size.X, PD50.size.Y, 91.520f);
 }
 
 void encodePD90(SSTV::rgb* rgbBuffer) {
-    SSTV::addVisCode(0x63);
+    SSTV::addVisCode(PD90.vis.visC);
     encodePD(rgbBuffer, PD90.size.X, PD90.size.Y, 170.240f);
 }
 
 void encodePD120(SSTV::rgb* rgbBuffer) {
-    SSTV::addVisCode(0x5F);
+    SSTV::addVisCode(PD120.vis.visC);
     encodePD(rgbBuffer, PD120.size.X, PD120.size.Y, 121.600f);
 }
 
 void encodePD160(SSTV::rgb* rgbBuffer) {
-    SSTV::addVisCode(0xE2);
+    SSTV::addVisCode(PD160.vis.visC);
     encodePD(rgbBuffer, PD160.size.X, PD160.size.Y, 195.584f);
 }
 
 void encodePD180(SSTV::rgb* rgbBuffer) {
-    SSTV::addVisCode(0x60);
+    SSTV::addVisCode(PD180.vis.visC);
     encodePD(rgbBuffer, PD180.size.X, PD180.size.Y, 183.040f);
 }
 
 void encodePD240(SSTV::rgb* rgbBuffer) {
-    SSTV::addVisCode(0xE1);
+    SSTV::addVisCode(PD240.vis.visC);
     encodePD(rgbBuffer, PD240.size.X, PD240.size.Y, 244.480f);
 }
 
 void encodePD290(SSTV::rgb* rgbBuffer) {
-    SSTV::addVisCode(0xDE);
+    SSTV::addVisCode(PD290.vis.visC);
     encodePD(rgbBuffer, PD290.size.X, PD290.size.Y, 228.800f);
 }

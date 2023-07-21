@@ -1,5 +1,5 @@
 /*
- * This file is part of CLSSTV (https://github.com/nymda/CLSSTV).
+ * This file is part of WinSSTV (https://github.com/nymda/WinSSTV).
  * Copyright (c) 2022 github/nymda
  *
  * This program is free software: you can redistribute it and/or modify
@@ -21,7 +21,7 @@
 #include "modes.h"
 
 void encodeR72(SSTV::rgb * rgbBuffer) {
-    SSTV::addVisCode(0x0C);
+    SSTV::addVisCode(R72.vis.visC);
 
     int img_width = R72.size.X;
     int img_height = R72.size.Y;

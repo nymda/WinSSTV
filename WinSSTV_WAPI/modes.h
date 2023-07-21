@@ -1,5 +1,5 @@
 /*
- * This file is part of CLSSTV (https://github.com/nymda/CLSSTV).
+ * This file is part of WinSSTV (https://github.com/nymda/WinSSTV).
  * Copyright (c) 2022 github/nymda
  *
  * This program is free software: you can redistribute it and/or modify
@@ -46,12 +46,18 @@ enum encModeID {
 	EM_PD290
 };
 
+union visCode {
+	char visC;
+	short visS;
+};
+
 struct encMode {
 	encModeID ID;
 	wchar_t code[8];
 	wchar_t desc[128];
 	SSTV::vec2 size;
 	encCall ec;
+	visCode vis;
 };
 
 extern encMode BW8;

@@ -130,6 +130,7 @@
   <ItemGroup>
     <ClInclude Include="AVT.h" />
     <ClInclude Include="BWX.h" />
+    <ClInclude Include="distortions.h" />
     <ClInclude Include="fontData.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="MAX.h" />
@@ -149,6 +150,7 @@
     <ClInclude Include="WinSSTV.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="distortions.cpp" />
     <ClCompile Include="modes.cpp" />
     <ClCompile Include="SSTV.cpp" />
     <ClCompile Include="textRendering.cpp" />

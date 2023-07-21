@@ -1,5 +1,5 @@
 /*
- * This file is part of CLSSTV (https://github.com/nymda/CLSSTV).
+ * This file is part of WinSSTV (https://github.com/nymda/WinSSTV).
  * Copyright (c) 2022 github/nymda
  *
  * This program is free software: you can redistribute it and/or modify
@@ -41,11 +41,11 @@ void encodeBW(SSTV::rgb* rgbBuffer, double lineMS) {
 }
 
 void encodeBW8(SSTV::rgb* rgbBuffer) {
-    SSTV::addVisCode(0x82);
+	SSTV::addVisCode(BW8.vis.visC);
     encodeBW(rgbBuffer, 58.89709f);
 }
 
 void encodeBW12(SSTV::rgb* rgbBuffer) {
-    SSTV::addVisCode(0x86);
+    SSTV::addVisCode(BW12.vis.visC);
     encodeBW(rgbBuffer, 92.f);
 }

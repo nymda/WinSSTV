@@ -1,5 +1,5 @@
 /*
- * This file is part of CLSSTV (https://github.com/nymda/CLSSTV).
+ * This file is part of WinSSTV (https://github.com/nymda/WinSSTV).
  * Copyright (c) 2022 github/nymda
  *
  * This program is free software: you can redistribute it and/or modify
@@ -62,26 +62,26 @@ void encodeMR(SSTV::rgb* rgbBuffer, float lineMS) {
 }
 
 void encodeMR73(SSTV::rgb* rgbBuffer) {
-    SSTV::addLongVisCode(0x4523);
+    SSTV::addLongVisCode(MR73.vis.visS);
 	encodeMR(rgbBuffer, 138.f);
 }
 
 void encodeMR90(SSTV::rgb* rgbBuffer) {
-    SSTV::addLongVisCode(0x4623);
+    SSTV::addLongVisCode(MR90.vis.visS);
 	encodeMR(rgbBuffer, 171.f);
 }
 
 void encodeMR115(SSTV::rgb* rgbBuffer) {
-    SSTV::addLongVisCode(0x4923);
+    SSTV::addLongVisCode(MR115.vis.visS);
 	encodeMR(rgbBuffer, 220.f);
 }
 
 void encodeMR140(SSTV::rgb* rgbBuffer) {
-    SSTV::addLongVisCode(0x4a23);
+    SSTV::addLongVisCode(MR140.vis.visS);
 	encodeMR(rgbBuffer, 269.f);
 }
 
 void encodeMR175(SSTV::rgb* rgbBuffer) {
-    SSTV::addLongVisCode(0x4c23);
+    SSTV::addLongVisCode(MR175.vis.visS);
 	encodeMR(rgbBuffer, 337.f);
 }
