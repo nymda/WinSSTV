@@ -44,53 +44,57 @@ namespace tr {
 	SSTV::rgb violet = { 255, 0,   255 };
 	
 	//this is clearly too many loops within loops but it works and im not sure how to improve it
-	int drawCharacter(SSTV::rgb colour, wchar_t c, SSTV::vec2 pos, int fontSize) {
+	int drawCharacter(SSTV::rgb colour, wchar_t c, SSTV::vec2 pos, float scale) {
 		int cmIndex = 0;
 
-		for (wchar_t cm : fontMap) {
-			if (cm == c) {
-				
-				//i cant remember what these do
-				SSTV::vec2 map = { cmIndex % CHARY, cmIndex / CHARY };
-				SSTV::vec2 mapPosExpanded = { (map.X * CHARX) + ((map.X * CHARX) / CHARX), (map.Y * CHARY) + ((map.Y * CHARY) / CHARY) };
-				
-				//pixel
-				for (int y = 0; y < CHARY; y++) {
-					for (int x = 0; x < CHARX; x++) {
+		float xStep = (float)CHARX / ((float)CHARX * scale);
+		float yStep = (float)CHARY / ((float)CHARY * scale);
 
-						//subpixel
-						for (int spY = 0; spY < fontSize; spY++) {
-							for (int spX = 0; spX < fontSize; spX++) {
-								
-								//actual drawing
-								int canvasOffset = ((pos.Y + (y * fontSize) + spY) * boundCanvasSize.X) + (pos.X + (x * fontSize) + spX);
-								int fontOffset = ((mapPosExpanded.Y + y) * fontImageSize.X) + (mapPosExpanded.X + x);
-								if ((canvasOffset <= (boundCanvasSize.X * boundCanvasSize.Y) && canvasOffset >= 0) && (fontOffset <= (fontImageSize.X * fontImageSize.Y) && fontOffset >= 0)) {
-									boundCanvas[canvasOffset] = rgbFont[fontOffset] == white ? colour : rgbFont[fontOffset];
-								}
-							}
-						}
-					}
-				}
-				
-				break;
+		float xSize = ((float)CHARX * scale);
+		float ySize = ((float)CHARY * scale);
+
+		for (char cm : fontMap) {
+			if (cm != c) { cmIndex++; continue; }
+			break;
+		}
+		if (cmIndex >= sizeof(fontMap)) { cmIndex = 0; }
+
+		SSTV::vec2 map = { cmIndex % CHARY, cmIndex / CHARY };
+		SSTV::vec2 mapPosExpanded = { (map.X * CHARX) + ((map.X * CHARX) / CHARX), (map.Y * CHARY) + ((map.Y * CHARY) / CHARY) };
+		SSTV::vec2 mapPosEnd = { mapPosExpanded.X + CHARX, mapPosExpanded.Y + CHARY };
+
+		SSTV::fVec2 samplePos = { 0.f, 0.f };
+		for (int y = 0; y < (int)(round(ySize)); y++) {
+			samplePos.X = 0.f;
+			for (int x = 0; x < (int)(round(xSize)); x++) {
+
+				int sX = (mapPosExpanded.X + samplePos.X);
+				int sY = (mapPosExpanded.Y + samplePos.Y);
+
+				int fontOffset = ((sY * fontImageSize.X) + sX);
+				int canvasOffset = ((pos.Y + y) * boundCanvasSize.X) + (pos.X + x);
+				if(canvasOffset < 0 || canvasOffset > (boundCanvasSize.X * boundCanvasSize.Y)) { continue; }
+
+				boundCanvas[canvasOffset] = rgbFont[fontOffset];
+
+				samplePos.X += xStep;
 			}
-			cmIndex++;
+			samplePos.Y += yStep;
 		}
 
-		return CHARX * fontSize;
+		return CHARX * scale;
 	}
 
-	int drawSpacer(int width, SSTV::vec2 pos, int fontSize) {
-		for (int y = 0; y < CHARY * fontSize; y++) {
-			for (int x = 0; x < width * fontSize; x++) {
+	int drawSpacer(int width, SSTV::vec2 pos, float scale) {
+		for (int y = 0; y < (int)round(CHARY * scale); y++) {
+			for (int x = 0; x < (int)round(width * scale); x++) {
 				int drawIndex = ((pos.Y + y) * boundCanvasSize.X) + (pos.X + x);
 				if (drawIndex <= (boundCanvasSize.X * boundCanvasSize.Y) && drawIndex >= 0) {
 					boundCanvas[drawIndex] = black;
 				}
 			}
 		}
-		return width * fontSize;
+		return width * scale;
 	}
 
 	void setTextOrigin(SSTV::vec2 origin) {
@@ -103,7 +107,7 @@ namespace tr {
 	}
 	
 	//text overrunning the edge of the provided canvas will be truncated
-	void drawString(SSTV::rgb colour, int fontSize, const wchar_t* string) {
+	void drawString(SSTV::rgb colour, float scale , const wchar_t* string) {
 		if (!boundCanvas) { return; }
 
 		//current offset from the origins X
@@ -113,21 +117,21 @@ namespace tr {
 		int spacerWidth = 2;
 		
 		//draw the background rectangle	
-		offset += drawSpacer(spacerWidth, { iOrigin.X, iOrigin.Y }, fontSize);
+		offset += drawSpacer(spacerWidth, { iOrigin.X, iOrigin.Y }, scale);
 		
 		//draw the required characters with 1px between them
 		for (int i = 0; i < wcslen(string); i++) {
-			if ((iOrigin.X + offset + (CHARX * fontSize)) > boundCanvasSize.X || string[i] == L';') {
-				iOrigin.Y += 16 * fontSize;
-				offset = drawSpacer(spacerWidth, { iOrigin.X, iOrigin.Y }, fontSize);
+			if ((iOrigin.X + offset + (CHARX * scale)) > boundCanvasSize.X || string[i] == L';') {
+				iOrigin.Y += CHARY * scale;
+				offset = drawSpacer(spacerWidth, { iOrigin.X, iOrigin.Y }, scale);
 
 				if (string[i] == L';') { continue; }
 			}
 			
-			offset += drawCharacter(colour, string[i], { iOrigin.X + offset, iOrigin.Y }, fontSize);
-			offset += drawSpacer(spacerWidth, { iOrigin.X + offset, iOrigin.Y }, fontSize);
+			offset += drawCharacter(colour, string[i], { iOrigin.X + offset, iOrigin.Y }, scale);
+			offset += drawSpacer(spacerWidth, { iOrigin.X + offset, iOrigin.Y }, scale);
 		}
-		iOrigin.Y += 16 * fontSize;
+		iOrigin.Y += CHARY * scale;
 	}
 	
 	SSTV::rgb* decompressFontData(char* compressed, int size) {

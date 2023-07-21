@@ -51,6 +51,24 @@ namespace SSTV {
             return !(*this == rhs);
         }
     };
+
+    struct fVec2 {
+        float X;
+        float Y;
+
+        bool operator == (const fVec2& rhs)
+        {
+            if (X == rhs.X && Y == rhs.Y) {
+                return true;
+            }
+            return false;
+        }
+
+        bool operator != (const fVec2& rhs)
+        {
+            return !(*this == rhs);
+        }
+    };
     
     struct rgb {
         unsigned char r;

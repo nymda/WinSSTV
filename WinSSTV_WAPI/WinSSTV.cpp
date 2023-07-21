@@ -569,7 +569,7 @@ void initUI(HWND parent) {
 
 	//numeric up/down for setting the font size
 	nud_fontSize = CreateWindowW(L"msctls_updown32", L"Font size", WS_VISIBLE | WS_CHILD | UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_NOTHOUSANDS, dispImgSize.X + 248, 65, 180, 20, parent, (HMENU)ID_FONTSIZE, NULL, NULL);
-	SendMessage(nud_fontSize, UDM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(3, 1));
+	SendMessage(nud_fontSize, UDM_SETRANGE, (WPARAM)0, (LPARAM)MAKELPARAM(12, 1));
 	
 	//distortions button
 	btn_distortions = CreateWindowW(L"Button", L"Distortions", WS_VISIBLE | WS_CHILD | WS_BORDER, dispImgSize.X + 194, 165, 71, 25, parent, (HMENU)ID_DISTORTIONS, NULL, NULL);
@@ -593,7 +593,7 @@ void reprocessImage() {
 	tr::setTextOrigin({ 0, 0 });
 
 	if (overlayLen > 0) {
-		tr::drawString(tr::white, iFontSize, overlayWideBuffer);
+		tr::drawString(tr::white, (float)((float)iFontSize / 4.f), overlayWideBuffer);
 	}
 
 	if (rgbMode != SSTV::RGBMode::RGB) {
